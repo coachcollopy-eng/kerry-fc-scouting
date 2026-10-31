@@ -8,7 +8,7 @@ st.title("Kerry FC Recruitment Platform")
 # 2. Load Position Tabs from Master File
 @st.cache_data
 def load_data():
-    xls = pd.ExcelFile("Kerry_FC_Master_Scouting_Shortlist_2026.xlsx")
+    xls = pd.ExcelFile("Kerry_FC_Master_Scouting_Database_2026.xlsx")
     sheets = {sheet: pd.read_excel(xls, sheet) for sheet in xls.sheet_names}
     return sheets
 
