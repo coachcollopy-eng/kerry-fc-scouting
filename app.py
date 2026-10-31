@@ -24,43 +24,46 @@ def load_data():
 
 data = load_data()
 
-# Add an "Overall Master Leaderboard" option to your position selector
+# Navigation View
 sheet_options = ["Overall Leaderboard (All Positions)"] + list(data.keys())
 selected_tab = st.sidebar.selectbox("Select View", sheet_options)
 
 if selected_tab == "Overall Leaderboard (All Positions)":
     st.header("🏆 Master Recruitment Leaderboard")
-    st.markdown("Consolidated ranking across all positional shortlists based on Composite Performance Index.")
+    st.markdown("Consolidated ranking across all positional shortlists.")
     
-    # Combine all position dataframes into one master table
-    all_dfs = []
+    all_scored_dfs = []
     for pos_name, df in data.items():
         temp_df = df.copy()
         temp_df["Position Tab"] = pos_name
-        all_dfs.append(temp_df)
-    
-    master_df = pd.concat(all_dfs, ignore_index=True)
-    
-    # Find the composite score column dynamically
-    score_col = next((col for col in master_df.columns if any(k in col.lower() for k in ["composite", "score", "cpi"])), None)
-    
-    if score_col:
-        master_df[score_col] = pd.to_numeric(master_df[score_col], errors="coerce")
-        master_df = master_df.dropna(subset=[score_col]).sort_values(by=score_col, ascending=False)
         
-        # Display top targets table
-        st.dataframe(master_df[['Player', 'Team', 'Position Tab', score_col, 'Minutes played'] if 'Minutes played' in master_df.columns else master_df.columns], use_container_width=True)
-        
-        # Visual top 15 overall chart
-        st.subheader("Top 15 Targets Across All Positions")
-        top_15 = master_df.head(15)
-        if "Player" in top_15.columns:
-            st.bar_chart(top_15.set_index("Player")[score_col])
-    else:
-        st.warning("Could not locate a composite score column across sheets to generate master ranking.")
+        # Simple dynamic composite scoring fallback based on available stats
+        numeric_cols = temp_df.select_dtypes(include=['number']).columns
+        if len(numeric_cols) > 0:
+            # Normalize numeric columns to 0-100 scale for a composite index
+            normalized = temp_df[numeric_cols].apply(lambda x: (x - x.min()) / (x.max() - x.min()) * 100 if x.max() != x.min() else 50)
+            temp_df["Composite Score"] = normalized.mean(axis=1).round(2)
+        else:
+            temp_df["Composite Score"] = 50.0
+            
+        all_scored_dfs.append(temp_df)
+    
+    master_df = pd.concat(all_scored_dfs, ignore_index=True)
+    master_df = master_df.sort_values(by="Composite Score", ascending=False)
+    
+    # Reorder columns to show Player, Team, Position, and Score first
+    front_cols = [col for col in ['Player', 'Team', 'Position Tab', 'Composite Score', 'Minutes played', 'Age'] if col in master_df.columns]
+    other_cols = [col for col in master_df.columns if col not in front_cols]
+    master_df = master_df[front_cols + other_cols]
+    
+    st.dataframe(master_df, use_container_width=True)
+    
+    st.subheader("Top 15 Club-Wide Targets")
+    top_15 = master_df.head(15)
+    if "Player" in top_15.columns:
+        st.bar_chart(top_15.set_index("Player")["Composite Score"])
 
 else:
-    # Standard Positional View
     df = data[selected_tab]
     
     mins_col = next((col for col in df.columns if any(k in col.lower() for k in ["minute", "min"])), None)
@@ -74,9 +77,3 @@ else:
 
     st.header(f"Shortlist: {selected_tab}")
     st.dataframe(filtered_df, use_container_width=True)
-
-    score_col = next((col for col in filtered_df.columns if any(k in col.lower() for k in ["composite", "score", "cpi"])), None)
-    if score_col and "Player" in filtered_df.columns:
-        st.subheader("Composite Performance Index Ranking")
-        chart_data = filtered_df.set_index("Player")[score_col].dropna()
-        st.bar_chart(chart_data)
