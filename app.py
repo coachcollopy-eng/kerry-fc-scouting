@@ -26,9 +26,8 @@ def load_data():
             if col not in ['Player', 'Team', 'Position', 'Contract expires', 'id']:
                 df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
         
-        # Apply Position-Specific Weighted Composite Scoring
+        # Position-Specific Weighted Composite Scoring
         if sheet == "Center Backs":
-            # Weighted formula emphasizing defensive duels, aerial duels, progressive passes, interceptions
             df["Composite Score"] = (
                 df.get("Defensive duels won, %", 0) * 0.25 +
                 df.get("Aerial duels won, %", 0) * 0.25 +
@@ -36,7 +35,6 @@ def load_data():
                 df.get("Successful defensive actions per 90", 0) * 1.5 +
                 df.get("Progressive passes per 90", 0) * 1.5
             ).round(2)
-            
         elif sheet == "Left Backs":
             df["Composite Score"] = (
                 df.get("Defensive duels won, %", 0) * 0.25 +
@@ -45,7 +43,6 @@ def load_data():
                 df.get("xA per 90", 0) * 10 +
                 df.get("Progressive runs per 90", 0) * 2
             ).round(2)
-            
         elif sheet == "Central Midfielders":
             df["Composite Score"] = (
                 df.get("Defensive duels won, %", 0) * 0.25 +
@@ -54,7 +51,6 @@ def load_data():
                 df.get("Progressive passes per 90", 0) * 1.5 +
                 df.get("Goals", 0) * 3
             ).round(2)
-            
         elif sheet == "Wingers":
             df["Composite Score"] = (
                 df.get("Successful dribbles, %", 0) * 0.25 +
@@ -63,7 +59,6 @@ def load_data():
                 df.get("Shots on target, %", 0) * 0.20 +
                 df.get("Goals", 0) * 2
             ).round(2)
-            
         elif sheet == "Center Forwards":
             df["Composite Score"] = (
                 df.get("Goal conversion, %", 0) * 0.30 +
@@ -72,7 +67,6 @@ def load_data():
                 df.get("Goals", 0) * 3 +
                 df.get("Touches in box per 90", 0) * 1.5
             ).round(2)
-            
         elif sheet == "Goalkeepers":
             df["Composite Score"] = (
                 df.get("Save rate, %", 0) * 0.40 +
@@ -83,7 +77,12 @@ def load_data():
         else:
             df["Composite Score"] = 50.0
 
-        sheets[sheet] = df.sort_values(by="Composite Score", ascending=False)
+        # Sort sheet by Composite Score descending
+        df = df.sort_values(by="Composite Score", ascending=False).reset_index(drop=True)
+        
+        # Bring Composite Score to the front for readability
+        cols = ['Player', 'Team', 'Composite Score'] + [c for c in df.columns if c not in ['Player', 'Team', 'Composite Score']]
+        sheets[sheet] = df[cols]
         
     return sheets
 
@@ -104,11 +103,11 @@ if selected_view.startswith("🏆"):
         all_dfs.append(temp_df)
     
     master_df = pd.concat(all_dfs, ignore_index=True)
-    master_df = master_df.sort_values(by="Composite Score", ascending=False)
+    master_df = master_df.sort_values(by="Composite Score", ascending=False).reset_index(drop=True)
     
-    front_cols = [col for col in ['Player', 'Team', 'Position Tab', 'Composite Score', 'Minutes played', 'Age'] if col in master_df.columns]
+    front_cols = ['Player', 'Team', 'Position Tab', 'Composite Score', 'Minutes played', 'Age']
     other_cols = [col for col in master_df.columns if col not in front_cols]
-    master_df = master_df[front_cols + other_cols]
+    master_df = master_df[[c for c in front_cols if c in master_df.columns] + other_cols]
     
     st.dataframe(master_df, use_container_width=True)
     
