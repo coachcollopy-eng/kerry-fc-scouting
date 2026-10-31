@@ -80,8 +80,8 @@ def load_data():
         # Sort sheet by Composite Score descending
         df = df.sort_values(by="Composite Score", ascending=False).reset_index(drop=True)
         
-        # Safely reorder columns based on what actually exists in the sheet
-            front_cols = [c for c in ['Player', 'Team', 'Composite Score'] if c in df.columns]
+        # Safely reorder columns
+        front_cols = [c for c in ['Player', 'Team', 'Composite Score'] if c in df.columns]
         other_cols = [c for c in df.columns if c not in front_cols]
         sheets[sheet] = df[front_cols + other_cols]
         
