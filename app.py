@@ -80,9 +80,10 @@ def load_data():
         # Sort sheet by Composite Score descending
         df = df.sort_values(by="Composite Score", ascending=False).reset_index(drop=True)
         
-        # Bring Composite Score to the front for readability
-        cols = ['Player', 'Team', 'Composite Score'] + [c for c in df.columns if c not in ['Player', 'Team', 'Composite Score']]
-        sheets[sheet] = df[cols]
+        # Safely reorder columns based on what actually exists in the sheet
+            front_cols = [c for c in ['Player', 'Team', 'Composite Score'] if c in df.columns]
+        other_cols = [c for c in df.columns if c not in front_cols]
+        sheets[sheet] = df[front_cols + other_cols]
         
     return sheets
 
@@ -105,9 +106,9 @@ if selected_view.startswith("🏆"):
     master_df = pd.concat(all_dfs, ignore_index=True)
     master_df = master_df.sort_values(by="Composite Score", ascending=False).reset_index(drop=True)
     
-    front_cols = ['Player', 'Team', 'Position Tab', 'Composite Score', 'Minutes played', 'Age']
+    front_cols = [c for c in ['Player', 'Team', 'Position Tab', 'Composite Score', 'Minutes played', 'Age'] if c in master_df.columns]
     other_cols = [col for col in master_df.columns if col not in front_cols]
-    master_df = master_df[[c for c in front_cols if c in master_df.columns] + other_cols]
+    master_df = master_df[front_cols + other_cols]
     
     st.dataframe(master_df, use_container_width=True)
     
