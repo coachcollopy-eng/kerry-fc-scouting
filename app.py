@@ -80,7 +80,12 @@ st.markdown("""
         color: #1E293B;
     }
 
-    /* Fix Radio Button and Widget Label Text Colors to Black */
+    /* Fix Metric text and labels font color */
+    div[data-testid="stMetricValue"], div[data-testid="stMetricLabel"] {
+        color: #0B3B2C !important;
+    }
+
+    /* Fix Radio Button, Checkbox, and Widget Label Text Colors to Black */
     div[data-baseweb="radio"] label span, 
     div[data-testid="stRadio"] label p,
     label[data-baseweb="checkbox"] span,
@@ -538,12 +543,8 @@ elif selected_view.startswith("⚽"):
             if not df_squad.empty:
                 df_display = df_squad.copy()
                 
-                # Add columns for interactive editing
                 statuses = []
                 accommodations = []
-                
-                # We can use st.data_editor or an iterative layout for live inline ticks
-                # Streamlit's st.data_editor supports checkboxes natively if boolean columns are used!
                 
                 for _, row in df_display.iterrows():
                     p_name = row['Player']
@@ -553,12 +554,10 @@ elif selected_view.startswith("⚽"):
                 df_display['Status'] = statuses
                 df_display['Accommodation'] = accommodations
                 
-                # Reorder columns so Player, Status, Accommodation are upfront
                 front_cols = ['Player', 'Status', 'Accommodation']
                 other_cols = [c for c in df_display.columns if c not in front_cols]
                 df_display = df_display[front_cols + other_cols]
                 
-                # Use st.data_editor for direct inline editing & ticking
                 edited_df = st.data_editor(
                     df_display,
                     use_container_width=True,
@@ -583,7 +582,6 @@ elif selected_view.startswith("⚽"):
                     key=f"editor_{group_name}"
                 )
                 
-                # Save changes back to session state immediately
                 for _, row in edited_df.iterrows():
                     p_name = row['Player']
                     st.session_state.squad_status[p_name] = row['Status']
