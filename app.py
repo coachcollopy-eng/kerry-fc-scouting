@@ -4,8 +4,77 @@ import pandas as pd
 import numpy as np
 
 # Set Streamlit Page Configuration
-st.set_page_config(page_title="Kerry FC Scouting Hub", layout="wide")
-st.title("Kerry FC Recruitment Platform")
+st.set_page_config(
+    page_title="Kerry FC Scouting Hub", 
+    page_icon="⚽",
+    layout="wide"
+)
+
+# ==============================================================================
+# KERRY FC CUSTOM CSS STYLING (Green & Gold Theme)
+# ==============================================================================
+st.markdown("""
+<style>
+    /* Main App Background */
+    .stApp {
+        background-color: #F8F9FA;
+    }
+    
+    /* Sidebar Styling */
+    section[data-testid="stSidebar"] {
+        background-color: #0B3B2C !important; /* Deep Kerry Green */
+        color: #FFFFFF;
+    }
+    
+    section[data-testid="stSidebar"] .stMarkdown h1, 
+    section[data-testid="stSidebar"] .stMarkdown h2, 
+    section[data-testid="stSidebar"] .stMarkdown h3,
+    section[data-testid="stSidebar"] label {
+        color: #FFD700 !important; /* Gold Text */
+    }
+    
+    section[data-testid="stSidebar"] .stSelectbox label, 
+    section[data-testid="stSidebar"] .stSlider label {
+        color: #FFFFFF !important;
+    }
+
+    /* Headers Styling */
+    h1, h2, h3 {
+        color: #0B3B2C !important;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    
+    /* Title Custom Banner Styling */
+    .main-title {
+        background: linear-gradient(90deg, #0B3B2C 0%, #145A43 100%);
+        padding: 20px 30px;
+        border-radius: 10px;
+        color: white;
+        margin-bottom: 25px;
+        border-left: 6px solid #C5A059; /* Gold Accent Border */
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .main-title h1 {
+        color: #FFFFFF !important;
+        margin: 0;
+        font-size: 2.2rem;
+    }
+    .main-title p {
+        color: #E2E8F0;
+        margin: 5px 0 0 0;
+        font-size: 1.05rem;
+    }
+
+    /* DataFrame container styling */
+    div[data-testid="stDataFrame"] {
+        border: 1px solid #E2E8F0;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        background-color: #FFFFFF;
+        padding: 5px;
+    }
+</style>
+""", unsafe_allow_html=True)
 
 # Path to Master Database
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -129,26 +198,19 @@ POSITION_PROFILES = {
 # 2. ZERO-DISCREPANCY RANKING ENGINE FUNCTION
 # ==============================================================================
 def calculate_absolute_ranking(df: pd.DataFrame, weights: dict, inverse_metrics: list = None) -> pd.DataFrame:
-    """
-    Performs deterministic Min-Max normalization and weighted composite index 
-    calculation matching rank_players.py logic exactly.
-    """
     if inverse_metrics is None:
         inverse_metrics = []
         
     df_clean = df.copy()
     
-    # Check weight sum integrity
     total_weight = sum(weights.values())
     if not np.isclose(total_weight, 1.0, atol=1e-5):
         st.warning(f"Warning: Position weights sum to {total_weight:.3f} instead of 1.00")
 
-    # Perform Min-Max Normalization
     composite_series = pd.Series(0.0, index=df_clean.index)
     
     for metric, weight in weights.items():
         if metric in df_clean.columns:
-            # Convert metric column to numeric
             s = pd.to_numeric(df_clean[metric], errors='coerce').fillna(0)
             min_val = s.min()
             max_val = s.max()
@@ -166,8 +228,6 @@ def calculate_absolute_ranking(df: pd.DataFrame, weights: dict, inverse_metrics:
             st.error(f"Missing required metric column: '{metric}'")
 
     df_clean['Composite Score'] = composite_series.round(2)
-    
-    # Sort strictly descending by Composite Score
     df_clean = df_clean.sort_values(by='Composite Score', ascending=False).reset_index(drop=True)
     df_clean['Rank'] = range(1, len(df_clean) + 1)
     
@@ -189,7 +249,6 @@ def load_and_process_database():
         df_raw = pd.read_excel(xls, sheet_name=sheet_name, header=2)
         df_raw.columns = df_raw.columns.astype(str).str.strip()
         
-        # Remove internal ID columns if present
         if 'id' in df_raw.columns:
             df_raw = df_raw.drop(columns=['id'])
             
@@ -213,7 +272,6 @@ def load_and_process_database():
             df_ranked['Composite Score'] = 50.0
             df_ranked['Rank'] = range(1, len(df_ranked) + 1)
             
-        # Reorder columns for maximum readability
         front_cols = [c for c in ['Rank', 'Player', 'Team', 'Composite Score', 'Minutes played', 'Age'] if c in df_ranked.columns]
         other_cols = [c for c in df_ranked.columns if c not in front_cols]
         sheets_dict[sheet_name] = df_ranked[front_cols + other_cols]
@@ -226,9 +284,18 @@ data = load_and_process_database()
 # ==============================================================================
 # 4. USER INTERFACE & NAVIGATION
 # ==============================================================================
-st.sidebar.title(" Kerry FC Scouting")
+st.sidebar.title("⚽ Kerry FC Scouting")
+st.sidebar.markdown("---")
 view_options = ["🏆 Master Leaderboard (All Positions)"] + [f"📍 Position: {pos}" for pos in data.keys()]
 selected_view = st.sidebar.selectbox("Select View", view_options)
+
+# Styled Branded Header Banner
+st.markdown("""
+<div class="main-title">
+    <h1>Kerry FC Recruitment Platform</h1>
+    <p>Deterministic tactical scouting engine evaluated using Min-Max normalization & custom positional weightings.</p>
+</div>
+""", unsafe_allow_html=True)
 
 if selected_view.startswith("🏆"):
     st.header("🏆 Master Recruitment Leaderboard")
@@ -244,7 +311,6 @@ if selected_view.startswith("🏆"):
     master_df = master_df.sort_values(by="Composite Score", ascending=False).reset_index(drop=True)
     master_df["Club Rank"] = range(1, len(master_df) + 1)
     
-    # Front-load master columns
     front_cols = ['Club Rank', 'Player', 'Team', 'Position Tab', 'Composite Score', 'Minutes played', 'Age']
     other_cols = [c for c in master_df.columns if c not in front_cols]
     master_df = master_df[[c for c in front_cols if c in master_df.columns] + other_cols]
@@ -262,11 +328,13 @@ else:
     
     st.header(f"Shortlist: {position_name}")
     
-    # Minutes Played Slider Filter
+    # Minutes Played Slider Filter in Sidebar
     mins_col = next((col for col in df_pos.columns if any(k in col.lower() for k in ["minute", "min"])), None)
     if mins_col:
         df_pos[mins_col] = pd.to_numeric(df_pos[mins_col], errors="coerce").fillna(0)
         max_mins = int(df_pos[mins_col].max()) if not df_pos[mins_col].empty and df_pos[mins_col].max() > 0 else 5000
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("Filters")
         min_minutes = st.sidebar.slider("Minimum Minutes Played", 0, max_mins, 0)
         filtered_df = df_pos[df_pos[mins_col] >= min_minutes]
     else:
