@@ -65,6 +65,21 @@ st.markdown("""
         font-size: 1.05rem;
     }
 
+    /* Markdown Text Highlight Fix (Change highlighted text color to black) */
+    ::selection {
+        background: #C5A059;
+        color: #000000 !important;
+    }
+    ::-moz-selection {
+        background: #C5A059;
+        color: #000000 !important;
+    }
+    
+    /* Ensure markdown paragraph text has high contrast */
+    .stMarkdown p {
+        color: #1E293B;
+    }
+
     /* DataFrame container styling */
     div[data-testid="stDataFrame"] {
         border: 1px solid #E2E8F0;
@@ -515,7 +530,6 @@ elif selected_view.startswith("⚽"):
                     "🔴 To Be Released / Departures"
                 ]
                 
-                # Default index fallback to Undecided if previous value not found
                 default_idx = status_options.index(current_status) if current_status in status_options else 2
                 
                 c1, c2 = st.columns([3, 1])
@@ -588,7 +602,7 @@ else:
         player_to_add = st.selectbox("Select player to add to Potential Targets", filtered_df['Player'].tolist(), key=f"add_select_{position_name}")
         
         col_btn1, col_btn2 = st.columns([1, 4])
-        with col_btn1:
+        withcol_btn1:
             if st.button("⭐ Add to Potential Targets", key=f"btn_add_{position_name}"):
                 existing_names = [t['Player'] for t in st.session_state.potential_targets]
                 if player_to_add not in existing_names:
