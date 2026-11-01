@@ -249,6 +249,12 @@ def load_and_process_database():
         df_raw = pd.read_excel(xls, sheet_name=sheet_name, header=2)
         df_raw.columns = df_raw.columns.astype(str).str.strip()
         
+        # NORMALIZE TEAM COLUMN VARIATIONS ACROSS SHEETS
+        for col in df_raw.columns:
+            if col.lower() in ['team', 'current team', 'club', 'team name']:
+                df_raw = df_raw.rename(columns={col: 'Team'})
+                break
+
         if 'id' in df_raw.columns:
             df_raw = df_raw.drop(columns=['id'])
             
