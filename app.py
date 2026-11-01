@@ -396,10 +396,7 @@ if selected_view.startswith("🏆"):
         master_clean = master_df[display_columns]
         
         master_config = {
-            "Player": st.column_config.TextColumn("Player", pinned=True),
-            "Club Rank": st.column_config.NumberColumn("Club Rank", pinned=True),
-            "Team": st.column_config.TextColumn("Team", pinned=True),
-            "Position Tab": st.column_config.TextColumn("Position Tab", pinned=True)
+            "Player": st.column_config.TextColumn("Player", pinned=True)
         }
         st.dataframe(master_clean, use_container_width=True, hide_index=True, column_config=master_config)
         
@@ -428,9 +425,7 @@ else:
         filtered_df = df_pos
 
     pos_config = {
-        "Player": st.column_config.TextColumn("Player", pinned=True),
-        "Rank": st.column_config.NumberColumn("Rank", pinned=True),
-        "Team": st.column_config.TextColumn("Team", pinned=True)
+        "Player": st.column_config.TextColumn("Player", pinned=True)
     }
     st.dataframe(filtered_df, use_container_width=True, column_config=pos_config)
     
