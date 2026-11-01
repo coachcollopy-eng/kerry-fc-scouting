@@ -281,15 +281,33 @@ def load_and_process_database():
 # Load Data
 data = load_and_process_database()
 
+import base64
+
+def render_svg(svg_file, width=120):
+    """Renders an SVG file cleanly in Streamlit via base64 encoding."""
+    if not os.path.exists(svg_file):
+        return False
+    try:
+        with open(svg_file, "r", encoding="utf-8") as f:
+            svg_content = f.read()
+        b64 = base64.b64encode(svg_content.encode("utf-8")).decode("utf-8")
+        html = f'<img src="data:image/svg+xml;base64,{b64}" width="{width}" />'
+        st.sidebar.markdown(html, unsafe_allow_html=True)
+        return True
+    except Exception:
+        return False
+
 # ==============================================================================
 # 4. USER INTERFACE & NAVIGATION
 # ==============================================================================
-# Option A: Display logo in the sidebar
-if os.path.exists("kerry_logo.png"):
-    st.sidebar.image("kerry_logo.png", width=120)
 
-st.sidebar.title("⚽ Kerry FC Scouting")
-st.sidebar.markdown("---")
+# Attempt to render the SVG logo in the sidebar
+logo_rendered = render_svg("kerry_logo.svg", width=110) # Replace with your exact SVG filename
+
+if not logo_rendered:
+    st.sidebar.markdown("⚽ **Kerry FC Scouting**")
+
+st.sidebar.title("Navigation")
 view_options = ["🏆 Master Leaderboard (All Positions)"] + [f"📍 Position: {pos}" for pos in data.keys()]
 selected_view = st.sidebar.selectbox("Select View", view_options)
 # Styled Branded Header Banner
