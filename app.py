@@ -353,7 +353,7 @@ if selected_view.startswith("🏆"):
         "Center Backs",
         "Left Backs",
         "Right Backs",
-        "Central Midfielder", # Matches your exact sheet name (or update to match your exact sheet title)
+        "Central Midfielders",
         "Attacking Midfielders",
         "Wingers",
         "Center Forwards"
@@ -361,9 +361,7 @@ if selected_view.startswith("🏆"):
     
     all_dfs = []
     
-    # Loop through in your strict order
     for pos_name in position_order:
-        # Match position name flexibly to your loaded sheets dict keys
         actual_sheet_key = next((k for k in data.keys() if pos_name.lower() in k.lower()), None)
         
         if actual_sheet_key and actual_sheet_key in data:
@@ -387,25 +385,25 @@ if selected_view.startswith("🏆"):
     
     if all_dfs:
         master_df = pd.concat(all_dfs, ignore_index=True)
-        # Note: We do NOT re-sort by composite score here, preserving your requested position order!
         master_df["Club Rank"] = range(1, len(master_df) + 1)
         
-        # --- SELECT ONLY ESSENTIAL COLUMNS ---
+        # Select only essential columns
         desired_columns = ['Club Rank', 'Player', 'Team', 'Position Tab', 'Composite Score', 'Minutes played', 'Age']
         display_columns = [col for col in desired_columns if col in master_df.columns]
         master_clean = master_df[display_columns]
         
+        # Configure columns to pin Player & Club Rank to the left when scrolling
         master_config = {}
-if "Player" in master_clean.columns:
-    master_config["Player"] = st.column_config.TextColumn("Player", pinned=True)
-if "Club Rank" in master_clean.columns:
-    master_config["Club Rank"] = st.column_config.NumberColumn("Club Rank", pinned=True)
-if "Team" in master_clean.columns:
-    master_config["Team"] = st.column_config.TextColumn("Team", pinned=True)
-if "Position Tab" in master_clean.columns:
-    master_config["Position Tab"] = st.column_config.TextColumn("Position Tab", pinned=True)
-
-st.dataframe(master_clean, use_container_width=True, hide_index=True, column_config=master_config)
+        if "Player" in master_clean.columns:
+            master_config["Player"] = st.column_config.TextColumn("Player", pinned=True)
+        if "Club Rank" in master_clean.columns:
+            master_config["Club Rank"] = st.column_config.NumberColumn("Club Rank", pinned=True)
+        if "Team" in master_clean.columns:
+            master_config["Team"] = st.column_config.TextColumn("Team", pinned=True)
+        if "Position Tab" in master_clean.columns:
+            master_config["Position Tab"] = st.column_config.TextColumn("Position Tab", pinned=True)
+        
+        st.dataframe(master_clean, use_container_width=True, hide_index=True, column_config=master_config)
         
         st.subheader("Top Tier Targets by Position")
         if "Player" in master_clean.columns and "Composite Score" in master_clean.columns:
