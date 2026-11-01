@@ -65,18 +65,6 @@ st.markdown("""
         font-size: 1.05rem;
     }
 
-    /* Pitch Visualizer Container */
-    .pitch-container {
-        background: linear-gradient(135deg, #0B3B2C 0%, #145A43 100%);
-        border: 2px solid #C5A059;
-        border-radius: 12px;
-        padding: 25px;
-        color: white;
-        text-align: center;
-        margin-bottom: 25px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-
     /* DataFrame container styling */
     div[data-testid="stDataFrame"] {
         border: 1px solid #E2E8F0;
@@ -323,22 +311,21 @@ def load_and_process_database():
     return sheets_dict
 
 @st.cache_data(ttl=60)
-def load_current_squad():
-    squad_list = []
+def load_current_squad_dict():
+    squad_dict = {}
     for group_name, path in SQUAD_FILES.items():
         if os.path.exists(path):
             xls = pd.ExcelFile(path)
             df = pd.read_excel(path, sheet_name=xls.sheet_names[0])
             df.columns = df.columns.astype(str).str.strip()
-            df['Positional Group'] = group_name
-            squad_list.append(df)
-    if squad_list:
-        return pd.concat(squad_list, ignore_index=True)
-    return pd.DataFrame()
+            if 'id' in df.columns:
+                df = df.drop(columns=['id'])
+            squad_dict[group_name] = df
+    return squad_dict
 
 # Load Data
 data = load_and_process_database()
-current_squad_df = load_current_squad()
+current_squad_dict = load_current_squad_dict()
 
 import base64
 
@@ -502,98 +489,65 @@ elif selected_view.startswith("⭐"):
                 st.dataframe(target_stats_df, use_container_width=True, column_config=pos_config_target)
 
 elif selected_view.startswith("⚽"):
-    st.header("⚽ Current Squad Info & 4-3-3 Tactical Visualizer")
-    st.markdown("Manage current squad contracts using a traffic-light status system (🟢 Signed, 🟡 Pending Offer, 🔴 To Be Released).")
+    st.header("⚽ Current Squad Info (Positional Breakdown & Green Light System)")
+    st.markdown("Review current squad members across separate positional tables and manage their contract retention status (🟢 Signed / Retained, 🟡 Pending, 🔴 To Be Released).")
     
-    if not current_squad_df.empty:
-        # --- 4-3-3 VISUAL PITCH REPRESENTATION ---
-        st.markdown("""
-        <div class="pitch-container">
-            <h3 style="color: #FFD700; margin-top:0;">Tactical 4-3-3 Formation Shape</h3>
-            <p style="margin-bottom:5px; font-size:0.95rem;">Visual layout of current squad assignments across positional lines.</p>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Helper to get status badge
-        def get_badge(p_name):
-            return st.session_state.squad_status.get(p_name, "🟢 Signed")
-        
-        # Group players by tactical lines
-        gks = current_squad_df[current_squad_df['Positional Group'] == 'Goalkeepers']['Player'].tolist()
-        fbs = current_squad_df[current_squad_df['Positional Group'] == 'Full Backs']['Player'].tolist()
-        cbs = current_squad_df[current_squad_df['Positional Group'] == 'Center Backs']['Player'].tolist()
-        cms = current_squad_df[current_squad_df['Positional Group'] == 'Central Midfielders']['Player'].tolist()
-        ams = current_squad_df[current_squad_df['Positional Group'] == 'Attacking Midfielders']['Player'].tolist()
-        wings = current_squad_df[current_squad_df['Positional Group'] == 'Wingers']['Player'].tolist()
-        cfs = current_squad_df[current_squad_df['Positional Group'] == 'Center Forwards']['Player'].tolist()
-        
-        # Render Pitch Columns
-        col_pitch1, col_pitch2, col_pitch3, col_pitch4 = st.columns(4)
-        
-        with col_pitch1:
-            st.markdown("#### **Forward 3**")
-            all_forwards = wings + cfs
-            for f in all_forwards[:3]:
-                st.info(f"**{f}**\n\nStatus: {get_badge(f)}")
-                
-        with col_pitch2:
-            st.markdown("#### **Midfield 3**")
-            all_mids = cms + ams
-            for m in all_mids[:3]:
-                st.warning(f"**{m}**\n\nStatus: {get_badge(m)}")
-                
-        with col_pitch3:
-            st.markdown("#### **Back 4**")
-            all_defs = fbs + cbs
-            for d in all_defs[:4]:
-                st.success(f"**{d}**\n\nStatus: {get_badge(d)}")
-                
-        with col_pitch4:
-            st.markdown("#### **Goalkeeper**")
-            for g in gks[:1]:
-                st.error(f"**{g}**\n\nStatus: {get_badge(g)}")
-                
-        st.markdown("---")
-        st.subheader("Current Squad Retention Dashboard")
-        
-        selected_squad_player = st.selectbox("Select Squad Player to Update Status", current_squad_df['Player'].unique().tolist())
-        
-        if selected_squad_player:
-            player_record = current_squad_df[current_squad_df['Player'] == selected_squad_player].iloc[0]
-            current_status = st.session_state.squad_status.get(selected_squad_player, "🟢 Signed / Retained")
+    if current_squad_dict:
+        # 1. Retention Status Management Tool
+        all_squad_players = []
+        for group_name, df_squad in current_squad_dict.items():
+            if 'Player' in df_squad.columns:
+                for _, row in df_squad.iterrows():
+                    all_squad_players.append((row['Player'], group_name))
+                    
+        if all_squad_players:
+            st.subheader("Quick Status Update Manager")
+            player_names_list = [p[0] for p in all_squad_players]
+            selected_squad_player = st.selectbox("Select Player to Update Retention Status", player_names_list)
             
-            c1, c2, c3, c4 = st.columns(4)
-            with c1:
-                st.metric("Positional Group", player_record.get('Positional Group', 'N/A'))
-            with c2:
-                st.metric("Age", player_record.get('Age', 'N/A'))
-            with c3:
-                st.metric("Minutes Played", player_record.get('Minutes played', 'N/A'))
-            with c4:
-                st.metric("Team", player_record.get('Team', 'Kerry FC'))
+            if selected_squad_player:
+                current_status = st.session_state.squad_status.get(selected_squad_player, "🟢 Signed / Retained")
                 
-            new_status = st.radio(
-                "Contract & Retention Status",
-                ["🟢 Signed / Retained", "🟡 Contract Pending / Offer Made", "🔴 To Be Released / Departures"],
-                index=["🟢 Signed / Retained", "🟡 Contract Pending / Offer Made", "🔴 To Be Released / Departures"].index(current_status)
-            )
-            
-            if st.button("Update Player Status"):
-                st.session_state.squad_status[selected_squad_player] = new_status
-                st.success(f"Updated retention status for **{selected_squad_player}** to {new_status}")
-                
+                c1, c2 = st.columns([2, 1])
+                with c1:
+                    new_status = st.radio(
+                        "Retention Status (Green Light System)",
+                        ["🟢 Signed / Retained", "🟡 Contract Pending / Offer Made", "🔴 To Be Released / Departures"],
+                        index=["🟢 Signed / Retained", "🟡 Contract Pending / Offer Made", "🔴 To Be Released / Departures"].index(current_status),
+                        horizontal=True
+                    )
+                with c2:
+                    st.markdown("<br>", unsafe_allow_html=True)
+                    if st.button("Update Status"):
+                        st.session_state.squad_status[selected_squad_player] = new_status
+                        st.success(f"Updated **{selected_squad_player}** to {new_status}")
+                        
         st.markdown("---")
-        st.subheader("Complete Current Squad Data Table")
+        st.subheader("Positional Squad Tables & Specific Metrics")
         
-        display_squad = current_squad_df.copy()
-        display_squad['Retention Status'] = display_squad['Player'].apply(lambda x: st.session_state.squad_status.get(x, "🟢 Signed / Retained"))
-        
-        squad_config = {
-            "Player": st.column_config.TextColumn("Player", pinned=True)
-        }
-        st.dataframe(display_squad, use_container_width=True, hide_index=True, column_config=squad_config)
+        # Render separate table for each positional group file
+        for group_name, df_squad in current_squad_dict.items():
+            st.markdown(f"### 📍 Squad: {group_name}")
+            if not df_squad.empty:
+                df_display = df_squad.copy()
+                # Insert Retention Status column right after Player if Player exists
+                if 'Player' in df_display.columns:
+                    df_display.insert(
+                        1, 
+                        'Status', 
+                        df_display['Player'].apply(lambda x: st.session_state.squad_status.get(x, "🟢 Signed / Retained"))
+                    )
+                
+                squad_pos_config = {
+                    "Player": st.column_config.TextColumn("Player", pinned=True),
+                    "Status": st.column_config.TextColumn("Status", pinned=True)
+                }
+                st.dataframe(df_display, use_container_width=True, hide_index=True, column_config=squad_pos_config)
+            else:
+                st.info(f"No records found for {group_name}.")
+            st.markdown("---")
     else:
-        st.warning("No current squad files found in the directory. Please ensure all 7 squad Excel files are placed in the app folder.")
+        st.warning("No current squad Excel files found. Please ensure all 7 squad files are placed in your app directory.")
 
 else:
     position_name = selected_view.replace("📍 Position: ", "")
