@@ -193,6 +193,14 @@ def load_and_process_database():
         if 'id' in df_raw.columns:
             df_raw = df_raw.drop(columns=['id'])
             
+        # DYNAMICALLY CREATE COMBINED METRIC FOR CENTER BACKS
+        if sheet_name == "Center Backs":
+            if 'Defensive duels per 90' in df_raw.columns and 'Aerial duels per 90' in df_raw.columns:
+                df_raw['Total duels per 90'] = (
+                    pd.to_numeric(df_raw['Defensive duels per 90'], errors='coerce').fillna(0) + 
+                    pd.to_numeric(df_raw['Aerial duels per 90'], errors='coerce').fillna(0)
+                )
+
         profile = POSITION_PROFILES.get(sheet_name)
         if profile:
             df_ranked = calculate_absolute_ranking(
