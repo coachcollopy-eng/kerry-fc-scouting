@@ -407,10 +407,6 @@ elif selected_view.startswith("⭐"):
     if not st.session_state.potential_targets:
         st.info("Your potential targets shortlist is currently empty. Browse position shortlists and click **'⭐ Add to Potential Targets'** on any player to add them here.")
     else:
-        # Convert shortlist to DataFrame for easy display & selection
-        shortlist_df = pd.DataFrame(st.session_state.potential_targets)
-        
-        # Pull latest metrics for shortlisted players
         enriched_targets = []
         for item in st.session_state.potential_targets:
             p_name = item['Player']
@@ -438,7 +434,6 @@ elif selected_view.startswith("⭐"):
             target_info = next((t for t in st.session_state.potential_targets if t['Player'] == selected_target), None)
             target_pos = target_info['Position'] if target_info else 'N/A'
             
-            # Fetch stats
             target_stats_df = pd.DataFrame()
             if target_pos in data and 'Player' in data[target_pos].columns:
                 target_stats_df = data[target_pos][data[target_pos]['Player'] == selected_target]
@@ -489,7 +484,7 @@ else:
     }
     st.dataframe(filtered_df, use_container_width=True, column_config=pos_config)
     
-    # --- ADD TO POTENTIAL TARGETS INTERACTIVE BUTTON SECTION ---
+    # --- ADD TO POTENTIAL TARGETS INTERACTIVE SECTION ---
     st.markdown("---")
     st.subheader("Add Player to Meeting Shortlist")
     
