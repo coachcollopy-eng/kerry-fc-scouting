@@ -358,6 +358,7 @@ if selected_view.startswith("🏆"):
         "Left Backs",
         "Right Backs",
         "Central Midfielder", # Matches your exact sheet name (or update to match your exact sheet title)
+        "Attacking Midfielders",
         "Wingers",
         "Center Forwards"
     ]
