@@ -490,7 +490,7 @@ elif selected_view.startswith("⭐"):
 
 elif selected_view.startswith("⚽"):
     st.header("⚽ Current Squad Info (Positional Breakdown & Green Light System)")
-    st.markdown("Review current squad members across separate positional tables and manage their contract retention status (🟢 Signed / Retained, 🟡 Pending, 🔴 To Be Released).")
+    st.markdown("Review current squad members across separate positional tables and manage their contract retention status (🟢 Signed / Retained, 🟡 Pending, ⚪ Undecided, 🔴 To Be Released).")
     
     if current_squad_dict:
         # 1. Retention Status Management Tool
@@ -508,12 +508,22 @@ elif selected_view.startswith("⚽"):
             if selected_squad_player:
                 current_status = st.session_state.squad_status.get(selected_squad_player, "🟢 Signed / Retained")
                 
-                c1, c2 = st.columns([2, 1])
+                status_options = [
+                    "🟢 Signed / Retained", 
+                    "🟡 Contract Pending / Offer Made", 
+                    "⚪ Undecided", 
+                    "🔴 To Be Released / Departures"
+                ]
+                
+                # Default index fallback to Undecided if previous value not found
+                default_idx = status_options.index(current_status) if current_status in status_options else 2
+                
+                c1, c2 = st.columns([3, 1])
                 with c1:
                     new_status = st.radio(
                         "Retention Status (Green Light System)",
-                        ["🟢 Signed / Retained", "🟡 Contract Pending / Offer Made", "🔴 To Be Released / Departures"],
-                        index=["🟢 Signed / Retained", "🟡 Contract Pending / Offer Made", "🔴 To Be Released / Departures"].index(current_status),
+                        status_options,
+                        index=default_idx,
                         horizontal=True
                     )
                 with c2:
@@ -530,7 +540,6 @@ elif selected_view.startswith("⚽"):
             st.markdown(f"### 📍 Squad: {group_name}")
             if not df_squad.empty:
                 df_display = df_squad.copy()
-                # Insert Retention Status column right after Player if Player exists
                 if 'Player' in df_display.columns:
                     df_display.insert(
                         1, 
