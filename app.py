@@ -381,6 +381,8 @@ if "player_notes" not in st.session_state:
     st.session_state.player_notes = {}
 if "squad_status" not in st.session_state:
     st.session_state.squad_status = {}
+if "squad_accommodation" not in st.session_state:
+    st.session_state.squad_accommodation = {}
 
 st.sidebar.title("Navigation")
 view_options = ["🏆 Master Leaderboard (All Positions)", "⭐ Potential Targets", "⚽ Current Squad Info"] + [f"📍 Position: {pos}" for pos in data.keys()]
@@ -516,20 +518,28 @@ elif selected_view.startswith("⚽"):
     st.markdown("Review current squad members across separate positional tables and manage their contract retention status (🟢 Signed / Retained, 🟡 Pending, ⚪ Undecided, 🔴 To Be Released).")
     
     if current_squad_dict:
-        # 1. Retention Status Management Tool
+        # Calculate total accommodation count
         all_squad_players = []
         for group_name, df_squad in current_squad_dict.items():
             if 'Player' in df_squad.columns:
                 for _, row in df_squad.iterrows():
-                    all_squad_players.append((row['Player'], group_name))
+                    all_squad_players.append(row['Player'])
                     
+        total_filled_rooms = sum(1 for p in all_squad_players if st.session_state.squad_accommodation.get(p, False))
+        total_rooms_capacity = 10  # Configurable capacity limit
+        
+        # Display Accommodation Metric Banner at the top of the tab
+        st.metric(label="Club Accommodation Usage", value=f"{total_filled_rooms} / {total_rooms_capacity} rooms filled")
+        st.markdown("---")
+        
+        # 1. Retention & Accommodation Status Management Tool
         if all_squad_players:
-            st.subheader("Quick Status Update Manager")
-            player_names_list = [p[0] for p in all_squad_players]
-            selected_squad_player = st.selectbox("Select Player to Update Retention Status", player_names_list)
+            st.subheader("Quick Status & Accommodation Manager")
+            selected_squad_player = st.selectbox("Select Player to Update", all_squad_players)
             
             if selected_squad_player:
                 current_status = st.session_state.squad_status.get(selected_squad_player, "🟢 Signed / Retained")
+                current_accom = st.session_state.squad_accommodation.get(selected_squad_player, False)
                 
                 status_options = [
                     "🟢 Signed / Retained", 
@@ -548,11 +558,14 @@ elif selected_view.startswith("⚽"):
                         index=default_idx,
                         horizontal=True
                     )
+                    new_accom = st.checkbox("Staying in club-provided accommodation", value=current_accom)
                 with c2:
-                    st.markdown("<br>", unsafe_allow_html=True)
-                    if st.button("Update Status"):
+                    st.markdown("<br><br>", unsafe_allow_html=True)
+                    if st.button("Update Player"):
                         st.session_state.squad_status[selected_squad_player] = new_status
-                        st.success(f"Updated **{selected_squad_player}** to {new_status}")
+                        st.session_state.squad_accommodation[selected_squad_player] = new_accom
+                        st.success(f"Updated **{selected_squad_player}** successfully!")
+                        st.rerun()
                         
         st.markdown("---")
         st.subheader("Positional Squad Tables & Specific Metrics")
@@ -568,10 +581,16 @@ elif selected_view.startswith("⚽"):
                         'Status', 
                         df_display['Player'].apply(lambda x: st.session_state.squad_status.get(x, "🟢 Signed / Retained"))
                     )
+                    df_display.insert(
+                        2, 
+                        'Club Accommodation', 
+                        df_display['Player'].apply(lambda x: "🏠 Yes" if st.session_state.squad_accommodation.get(x, False) else "No")
+                    )
                 
                 squad_pos_config = {
                     "Player": st.column_config.TextColumn("Player", pinned=True),
-                    "Status": st.column_config.TextColumn("Status", pinned=True)
+                    "Status": st.column_config.TextColumn("Status", pinned=True),
+                    "Club Accommodation": st.column_config.TextColumn("Club Accommodation", pinned=True)
                 }
                 st.dataframe(df_display, use_container_width=True, hide_index=True, column_config=squad_pos_config)
             else:
