@@ -335,41 +335,63 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 if selected_view.startswith("🏆"):
-    st.header("🏆 Master Recruitment Leaderboard (Top 3 Per Position)")
-    st.markdown("Consolidated club-wide view featuring the top 3 ranked players from each position profile.")
+    st.header("🏆 Master Recruitment Leaderboard (Top 1 Per Position)")
+    st.markdown("Consolidated club-wide view featuring the top-ranked target for each tactical position.")
+    
+    # Define your exact desired position display order
+    position_order = [
+        "Goalkeepers",
+        "Center Backs",
+        "Left Backs",
+        "Right Backs",
+        "Central Midfielder", # Matches your exact sheet name (or update to match your exact sheet title)
+        "Wingers",
+        "Center Forwards"
+    ]
     
     all_dfs = []
-    for pos_name, df_pos in data.items():
-        temp_df = df_pos.copy()
-        temp_df["Position Tab"] = pos_name
+    
+    # Loop through in your strict order
+    for pos_name in position_order:
+        # Match position name flexibly to your loaded sheets dict keys
+        actual_sheet_key = next((k for k in data.keys() if pos_name.lower() in k.lower()), None)
         
-        # Ensure team column is uniform
-        if 'Team' not in temp_df.columns:
-            for col in temp_df.columns:
-                if 'team' in col.lower() or 'club' in col.lower():
-                    temp_df = temp_df.rename(columns={col: 'Team'})
-                    break
-            if 'Team' not in temp_df.columns:
-                temp_df['Team'] = "Unknown"
-                
-        top_3_pos = temp_df.sort_values(by="Composite Score", ascending=False).head(3)
-        all_dfs.append(top_3_pos)
+        if actual_sheet_key and actual_sheet_key in data:
+            df_pos = data[actual_sheet_key].copy()
+            df_pos["Position Tab"] = actual_sheet_key
+            
+            # Ensure team column is uniform
+            if 'Team' not in df_pos.columns:
+                for col in df_pos.columns:
+                    if 'team' in col.lower() or 'club' in col.lower():
+                        df_pos = df_pos.rename(columns={col: 'Team'})
+                        break
+                if 'Team' not in df_pos.columns:
+                    df_pos['Team'] = "Unknown"
+            else:
+                df_pos['Team'] = df_pos['Team'].fillna("Unknown")
+            
+            # Grab strictly the #1 top player for this position tab
+            top_1_pos = df_pos.sort_values(by="Composite Score", ascending=False).head(1)
+            all_dfs.append(top_1_pos)
     
-    master_df = pd.concat(all_dfs, ignore_index=True)
-    master_df = master_df.sort_values(by="Composite Score", ascending=False).reset_index(drop=True)
-    master_df["Club Rank"] = range(1, len(master_df) + 1)
-    
-    # --- SELECT ONLY ESSENTIAL COLUMNS ---
-    desired_columns = ['Club Rank', 'Player', 'Team', 'Position Tab', 'Composite Score', 'Minutes played', 'Age']
-    # Keep only columns that actually exist in the dataframe
-    display_columns = [col for col in desired_columns if col in master_df.columns]
-    master_clean = master_df[display_columns]
-    
-    st.dataframe(master_clean, use_container_width=True, hide_index=True)
-    
-    st.subheader("Top Multi-Position Targets")
-    if "Player" in master_clean.columns and "Composite Score" in master_clean.columns:
-        st.bar_chart(master_clean.head(15).set_index("Player")["Composite Score"])
+    if all_dfs:
+        master_df = pd.concat(all_dfs, ignore_index=True)
+        # Note: We do NOT re-sort by composite score here, preserving your requested position order!
+        master_df["Club Rank"] = range(1, len(master_df) + 1)
+        
+        # --- SELECT ONLY ESSENTIAL COLUMNS ---
+        desired_columns = ['Club Rank', 'Player', 'Team', 'Position Tab', 'Composite Score', 'Minutes played', 'Age']
+        display_columns = [col for col in desired_columns if col in master_df.columns]
+        master_clean = master_df[display_columns]
+        
+        st.dataframe(master_clean, use_container_width=True, hide_index=True)
+        
+        st.subheader("Top Tier Targets by Position")
+        if "Player" in master_clean.columns and "Composite Score" in master_clean.columns:
+            st.bar_chart(master_clean.set_index("Player")["Composite Score"])
+    else:
+        st.warning("No position data available to build the master leaderboard.")
 
 else:
     position_name = selected_view.replace("📍 Position: ", "")
