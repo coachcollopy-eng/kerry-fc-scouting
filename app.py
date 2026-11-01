@@ -567,7 +567,7 @@ elif selected_view.startswith("⚽"):
                 }
                 st.dataframe(df_display, use_container_width=True, hide_index=True, column_config=squad_pos_config)
             else:
-                st.info(f"No records found for {group_name}.")
+                st.info(f"No records found for group {group_name}.")
             st.markdown("---")
     else:
         st.warning("No current squad Excel files found. Please ensure all 7 squad files are placed in your app directory.")
@@ -602,7 +602,7 @@ else:
         player_to_add = st.selectbox("Select player to add to Potential Targets", filtered_df['Player'].tolist(), key=f"add_select_{position_name}")
         
         col_btn1, col_btn2 = st.columns([1, 4])
-        withcol_btn1:
+        with col_btn1:
             if st.button("⭐ Add to Potential Targets", key=f"btn_add_{position_name}"):
                 existing_names = [t['Player'] for t in st.session_state.potential_targets]
                 if player_to_add not in existing_names:
