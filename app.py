@@ -442,8 +442,8 @@ if selected_view.startswith("🏆"):
         st.warning("No position data available to build the master leaderboard.")
 
 elif selected_view.startswith("⭐"):
-    st.header("⭐ Potential Targets Meeting Shortlist")
-    st.markdown("Curated shortlist for tomorrow's recruitment meeting with notes on contact status, interest, and next steps.")
+    st.header("⭐ Potential Targets Shortlist")
+    st.markdown("Curated shortlist with notes on contact status, interest, and next steps.")
     
     if not st.session_state.potential_targets:
         st.info("Your potential targets shortlist is currently empty. Browse position shortlists and click **'⭐ Add to Potential Targets'** on any player to add them here.")
