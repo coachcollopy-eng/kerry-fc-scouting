@@ -65,6 +65,18 @@ st.markdown("""
         font-size: 1.05rem;
     }
 
+    /* Pitch Visualizer Container */
+    .pitch-container {
+        background: linear-gradient(135deg, #0B3B2C 0%, #145A43 100%);
+        border: 2px solid #C5A059;
+        border-radius: 12px;
+        padding: 25px;
+        color: white;
+        text-align: center;
+        margin-bottom: 25px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
     /* DataFrame container styling */
     div[data-testid="stDataFrame"] {
         border: 1px solid #E2E8F0;
@@ -76,9 +88,19 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Path to Master Database
+# Path to Master Database & Squad Files
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 EXCEL_PATH = os.path.join(BASE_DIR, "Kerry_FC_Master_Scouting_Database_2026.xlsx")
+
+SQUAD_FILES = {
+    "Goalkeepers": os.path.join(BASE_DIR, "Current Squad - GK's.xlsx"),
+    "Full Backs": os.path.join(BASE_DIR, "Current Squad - FB's.xlsx"),
+    "Center Backs": os.path.join(BASE_DIR, "Current Squad - CB's.xlsx"),
+    "Central Midfielders": os.path.join(BASE_DIR, "Current Squad - CM's.xlsx"),
+    "Attacking Midfielders": os.path.join(BASE_DIR, "Current Squad - AM's.xlsx"),
+    "Wingers": os.path.join(BASE_DIR, "Current Squad - W's.xlsx"),
+    "Center Forwards": os.path.join(BASE_DIR, "Current Squad - CF's.xlsx")
+}
 
 # ==============================================================================
 # 1. LOCKED POSITION-SPECIFIC WEIGHT DICTIONARIES (Must Sum to 1.00)
@@ -247,7 +269,7 @@ def calculate_absolute_ranking(df: pd.DataFrame, weights: dict, inverse_metrics:
     return df_clean
 
 # ==============================================================================
-# 3. DATA LOADING AND PROCESSING PIPELINE
+# 3. DATA LOADING PIPELINE (Master Database & Current Squads)
 # ==============================================================================
 @st.cache_data(ttl=60)
 def load_and_process_database():
@@ -300,8 +322,23 @@ def load_and_process_database():
         
     return sheets_dict
 
+@st.cache_data(ttl=60)
+def load_current_squad():
+    squad_list = []
+    for group_name, path in SQUAD_FILES.items():
+        if os.path.exists(path):
+            xls = pd.ExcelFile(path)
+            df = pd.read_excel(path, sheet_name=xls.sheet_names[0])
+            df.columns = df.columns.astype(str).str.strip()
+            df['Positional Group'] = group_name
+            squad_list.append(df)
+    if squad_list:
+        return pd.concat(squad_list, ignore_index=True)
+    return pd.DataFrame()
+
 # Load Data
 data = load_and_process_database()
+current_squad_df = load_current_squad()
 
 import base64
 
@@ -465,53 +502,75 @@ elif selected_view.startswith("⭐"):
                 st.dataframe(target_stats_df, use_container_width=True, column_config=pos_config_target)
 
 elif selected_view.startswith("⚽"):
-    st.header("⚽ Current Squad Info")
+    st.header("⚽ Current Squad Info & 4-3-3 Tactical Visualizer")
     st.markdown("Manage current squad contracts using a traffic-light status system (🟢 Signed, 🟡 Pending Offer, 🔴 To Be Released).")
     
-    all_squad_players = []
-    for pos_name, df_pos in data.items():
-        if 'Team' in df_pos.columns:
-            kerry_players = df_pos[df_pos['Team'].str.contains("Kerry", case=False, na=False)]
-            for _, row in kerry_players.iterrows():
-                all_squad_players.append({
-                    'Player': row['Player'],
-                    'Position': pos_name,
-                    'Age': row.get('Age', 'N/A'),
-                    'Minutes played': row.get('Minutes played', 'N/A'),
-                    'Composite Score': row.get('Composite Score', 'N/A')
-                })
+    if not current_squad_df.empty:
+        # --- 4-3-3 VISUAL PITCH REPRESENTATION ---
+        st.markdown("""
+        <div class="pitch-container">
+            <h3 style="color: #FFD700; margin-top:0;">Tactical 4-3-3 Formation Shape</h3>
+            <p style="margin-bottom:5px; font-size:0.95rem;">Visual layout of current squad assignments across positional lines.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Helper to get status badge
+        def get_badge(p_name):
+            return st.session_state.squad_status.get(p_name, "🟢 Signed")
+        
+        # Group players by tactical lines
+        gks = current_squad_df[current_squad_df['Positional Group'] == 'Goalkeepers']['Player'].tolist()
+        fbs = current_squad_df[current_squad_df['Positional Group'] == 'Full Backs']['Player'].tolist()
+        cbs = current_squad_df[current_squad_df['Positional Group'] == 'Center Backs']['Player'].tolist()
+        cms = current_squad_df[current_squad_df['Positional Group'] == 'Central Midfielders']['Player'].tolist()
+        ams = current_squad_df[current_squad_df['Positional Group'] == 'Attacking Midfielders']['Player'].tolist()
+        wings = current_squad_df[current_squad_df['Positional Group'] == 'Wingers']['Player'].tolist()
+        cfs = current_squad_df[current_squad_df['Positional Group'] == 'Center Forwards']['Player'].tolist()
+        
+        # Render Pitch Columns
+        col_pitch1, col_pitch2, col_pitch3, col_pitch4 = st.columns(4)
+        
+        with col_pitch1:
+            st.markdown("#### **Forward 3**")
+            all_forwards = wings + cfs
+            for f in all_forwards[:3]:
+                st.info(f"**{f}**\n\nStatus: {get_badge(f)}")
                 
-    if not all_squad_players:
-        st.info("No explicit 'Kerry FC' team string found in dataset rows. Showing top squad options for retention tagging:")
-        for pos_name, df_pos in data.items():
-            top_few = df_pos.head(2)
-            for _, row in top_few.iterrows():
-                all_squad_players.append({
-                    'Player': row['Player'],
-                    'Position': pos_name,
-                    'Age': row.get('Age', 'N/A'),
-                    'Minutes played': row.get('Minutes played', 'N/A'),
-                    'Composite Score': row.get('Composite Score', 'N/A')
-                })
+        with col_pitch2:
+            st.markdown("#### **Midfield 3**")
+            all_mids = cms + ams
+            for m in all_mids[:3]:
+                st.warning(f"**{m}**\n\nStatus: {get_badge(m)}")
                 
-    squad_df = pd.DataFrame(all_squad_players)
-    
-    if not squad_df.empty:
+        with col_pitch3:
+            st.markdown("#### **Back 4**")
+            all_defs = fbs + cbs
+            for d in all_defs[:4]:
+                st.success(f"**{d}**\n\nStatus: {get_badge(d)}")
+                
+        with col_pitch4:
+            st.markdown("#### **Goalkeeper**")
+            for g in gks[:1]:
+                st.error(f"**{g}**\n\nStatus: {get_badge(g)}")
+                
+        st.markdown("---")
         st.subheader("Current Squad Retention Dashboard")
         
-        selected_squad_player = st.selectbox("Select Squad Player to Update Status", squad_df['Player'].tolist())
+        selected_squad_player = st.selectbox("Select Squad Player to Update Status", current_squad_df['Player'].unique().tolist())
         
         if selected_squad_player:
-            player_record = squad_df[squad_df['Player'] == selected_squad_player].iloc[0]
+            player_record = current_squad_df[current_squad_df['Player'] == selected_squad_player].iloc[0]
             current_status = st.session_state.squad_status.get(selected_squad_player, "🟢 Signed / Retained")
             
-            c1, c2, c3 = st.columns(3)
+            c1, c2, c3, c4 = st.columns(4)
             with c1:
-                st.metric("Position", player_record['Position'])
+                st.metric("Positional Group", player_record.get('Positional Group', 'N/A'))
             with c2:
-                st.metric("Age", player_record['Age'])
+                st.metric("Age", player_record.get('Age', 'N/A'))
             with c3:
-                st.metric("Composite Score", player_record['Composite Score'])
+                st.metric("Minutes Played", player_record.get('Minutes played', 'N/A'))
+            with c4:
+                st.metric("Team", player_record.get('Team', 'Kerry FC'))
                 
             new_status = st.radio(
                 "Contract & Retention Status",
@@ -524,17 +583,17 @@ elif selected_view.startswith("⚽"):
                 st.success(f"Updated retention status for **{selected_squad_player}** to {new_status}")
                 
         st.markdown("---")
-        st.subheader("Current Squad Overview")
+        st.subheader("Complete Current Squad Data Table")
         
-        display_squad = squad_df.copy()
+        display_squad = current_squad_df.copy()
         display_squad['Retention Status'] = display_squad['Player'].apply(lambda x: st.session_state.squad_status.get(x, "🟢 Signed / Retained"))
         
         squad_config = {
             "Player": st.column_config.TextColumn("Player", pinned=True)
         }
-        st.dataframe(display_squad[['Player', 'Position', 'Retention Status', 'Age', 'Minutes played', 'Composite Score']], use_container_width=True, hide_index=True, column_config=squad_config)
+        st.dataframe(display_squad, use_container_width=True, hide_index=True, column_config=squad_config)
     else:
-        st.warning("No squad data available.")
+        st.warning("No current squad files found in the directory. Please ensure all 7 squad Excel files are placed in the app folder.")
 
 else:
     position_name = selected_view.replace("📍 Position: ", "")
