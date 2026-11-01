@@ -6,7 +6,7 @@ import numpy as np
 # Set Streamlit Page Configuration
 st.set_page_config(
     page_title="Kerry FC Scouting Hub", 
-    page_icon="⚽",
+    page_icon="🛡️",
     layout="wide"
 )
 
@@ -330,7 +330,7 @@ def render_svg(svg_file, width=120):
 logo_rendered = render_svg("kerry_logo.svg", width=110) # Replace with your exact SVG filename
 
 if not logo_rendered:
-    st.sidebar.markdown("⚽ **Kerry FC Scouting**")
+    st.sidebar.markdown("🛡️ **Kerry FC Scouting**")
 
 st.sidebar.title("Navigation")
 view_options = ["🏆 Master Leaderboard (All Positions)"] + [f"📍 Position: {pos}" for pos in data.keys()]
@@ -353,7 +353,7 @@ if selected_view.startswith("🏆"):
         "Center Backs",
         "Left Backs",
         "Right Backs",
-        "Central Midfielder", # Matches your exact sheet name (or update to match your exact sheet title)
+        "Central Midfielders", # Matches your exact sheet name (or update to match your exact sheet title)
         "Attacking Midfielders",
         "Wingers",
         "Center Forwards"
@@ -395,7 +395,13 @@ if selected_view.startswith("🏆"):
         display_columns = [col for col in desired_columns if col in master_df.columns]
         master_clean = master_df[display_columns]
         
-        st.dataframe(master_clean, use_container_width=True, hide_index=True)
+        master_config = {
+            "Player": st.column_config.TextColumn("Player", pinned=True),
+            "Club Rank": st.column_config.NumberColumn("Club Rank", pinned=True),
+            "Team": st.column_config.TextColumn("Team", pinned=True),
+            "Position Tab": st.column_config.TextColumn("Position Tab", pinned=True)
+        }
+        st.dataframe(master_clean, use_container_width=True, hide_index=True, column_config=master_config)
         
         st.subheader("Top Tier Targets by Position")
         if "Player" in master_clean.columns and "Composite Score" in master_clean.columns:
@@ -421,7 +427,12 @@ else:
     else:
         filtered_df = df_pos
 
-    st.dataframe(filtered_df, use_container_width=True)
+    pos_config = {
+        "Player": st.column_config.TextColumn("Player", pinned=True),
+        "Rank": st.column_config.NumberColumn("Rank", pinned=True),
+        "Team": st.column_config.TextColumn("Team", pinned=True)
+    }
+    st.dataframe(filtered_df, use_container_width=True, column_config=pos_config)
     
     if "Composite Score" in filtered_df.columns and "Player" in filtered_df.columns:
         st.subheader(f"{position_name} Composite Performance Ranking")
