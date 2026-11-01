@@ -515,7 +515,7 @@ elif selected_view.startswith("⭐"):
 
 elif selected_view.startswith("⚽"):
     st.header("⚽ Current Squad Info (Positional Breakdown & Green Light System)")
-    st.markdown("Review current squad members across separate positional tables and manage their contract retention status (🟢 Signed / Retained, 🟡 Pending, ⚪ Undecided, 🔴 To Be Released).")
+    st.markdown("Review current squad members across separate positional tables and manage their contract retention status & accommodation.")
     
     if current_squad_dict:
         # Calculate total accommodation count
@@ -528,71 +528,67 @@ elif selected_view.startswith("⚽"):
         total_filled_rooms = sum(1 for p in all_squad_players if st.session_state.squad_accommodation.get(p, False))
         total_rooms_capacity = 10  # Configurable capacity limit
         
-        # Display Accommodation Metric Banner at the top of the tab
+        # Display Accommodation Metric Banner at the top
         st.metric(label="Club Accommodation Usage", value=f"{total_filled_rooms} / {total_rooms_capacity} rooms filled")
         st.markdown("---")
         
-        # 1. Retention & Accommodation Status Management Tool
-        if all_squad_players:
-            st.subheader("Quick Status & Accommodation Manager")
-            selected_squad_player = st.selectbox("Select Player to Update", all_squad_players)
-            
-            if selected_squad_player:
-                current_status = st.session_state.squad_status.get(selected_squad_player, "🟢 Signed / Retained")
-                current_accom = st.session_state.squad_accommodation.get(selected_squad_player, False)
-                
-                status_options = [
-                    "🟢 Signed / Retained", 
-                    "🟡 Contract Pending / Offer Made", 
-                    "⚪ Undecided", 
-                    "🔴 To Be Released / Departures"
-                ]
-                
-                default_idx = status_options.index(current_status) if current_status in status_options else 2
-                
-                c1, c2 = st.columns([3, 1])
-                with c1:
-                    new_status = st.radio(
-                        "Retention Status (Green Light System)",
-                        status_options,
-                        index=default_idx,
-                        horizontal=True
-                    )
-                    new_accom = st.checkbox("Staying in club-provided accommodation", value=current_accom)
-                with c2:
-                    st.markdown("<br><br>", unsafe_allow_html=True)
-                    if st.button("Update Player"):
-                        st.session_state.squad_status[selected_squad_player] = new_status
-                        st.session_state.squad_accommodation[selected_squad_player] = new_accom
-                        st.success(f"Updated **{selected_squad_player}** successfully!")
-                        st.rerun()
-                        
-        st.markdown("---")
-        st.subheader("Positional Squad Tables & Specific Metrics")
-        
-        # Render separate table for each positional group file
+        # Render separate interactive table for each positional group file
         for group_name, df_squad in current_squad_dict.items():
             st.markdown(f"### 📍 Squad: {group_name}")
             if not df_squad.empty:
                 df_display = df_squad.copy()
-                if 'Player' in df_display.columns:
-                    df_display.insert(
-                        1, 
-                        'Status', 
-                        df_display['Player'].apply(lambda x: st.session_state.squad_status.get(x, "🟢 Signed / Retained"))
-                    )
-                    df_display.insert(
-                        2, 
-                        'Club Accommodation', 
-                        df_display['Player'].apply(lambda x: "🏠 Yes" if st.session_state.squad_accommodation.get(x, False) else "No")
-                    )
                 
-                squad_pos_config = {
-                    "Player": st.column_config.TextColumn("Player", pinned=True),
-                    "Status": st.column_config.TextColumn("Status", pinned=True),
-                    "Club Accommodation": st.column_config.TextColumn("Club Accommodation", pinned=True)
-                }
-                st.dataframe(df_display, use_container_width=True, hide_index=True, column_config=squad_pos_config)
+                # Add columns for interactive editing
+                statuses = []
+                accommodations = []
+                
+                # We can use st.data_editor or an iterative layout for live inline ticks
+                # Streamlit's st.data_editor supports checkboxes natively if boolean columns are used!
+                
+                for _, row in df_display.iterrows():
+                    p_name = row['Player']
+                    statuses.append(st.session_state.squad_status.get(p_name, "🟢 Signed / Retained"))
+                    accommodations.append(st.session_state.squad_accommodation.get(p_name, False))
+                
+                df_display['Status'] = statuses
+                df_display['Accommodation'] = accommodations
+                
+                # Reorder columns so Player, Status, Accommodation are upfront
+                front_cols = ['Player', 'Status', 'Accommodation']
+                other_cols = [c for c in df_display.columns if c not in front_cols]
+                df_display = df_display[front_cols + other_cols]
+                
+                # Use st.data_editor for direct inline editing & ticking
+                edited_df = st.data_editor(
+                    df_display,
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "Player": st.column_config.TextColumn("Player", pinned=True, disabled=True),
+                        "Status": st.column_config.SelectboxColumn(
+                            "Status",
+                            options=[
+                                "🟢 Signed / Retained", 
+                                "🟡 Contract Pending / Offer Made", 
+                                "⚪ Undecided", 
+                                "🔴 To Be Released / Departures"
+                            ],
+                            required=True
+                        ),
+                        "Accommodation": st.column_config.CheckboxColumn(
+                            "Club Accommodation",
+                            help="Tick if staying in club-provided accommodation"
+                        )
+                    },
+                    key=f"editor_{group_name}"
+                )
+                
+                # Save changes back to session state immediately
+                for _, row in edited_df.iterrows():
+                    p_name = row['Player']
+                    st.session_state.squad_status[p_name] = row['Status']
+                    st.session_state.squad_accommodation[p_name] = bool(row['Accommodation'])
+                    
             else:
                 st.info(f"No records found for group {group_name}.")
             st.markdown("---")
