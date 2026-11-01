@@ -21,7 +21,6 @@ def load_data():
         df = pd.read_excel(xls, sheet_name=sheet, header=2)
         df.columns = df.columns.astype(str).str.strip()
         
-        # Look for Composite Score column
         score_col = next((c for c in df.columns if "composite" in c.lower() or "score" in c.lower()), None)
         
         if score_col:
@@ -57,7 +56,7 @@ if selected_view.startswith("🏆"):
     if score_col:
         master_df = master_df.sort_values(by=score_col, ascending=False).reset_index(drop=True)
         front_cols = [c for c in ['Player', 'Team', 'Position Tab', score_col, 'Minutes played', 'Age'] if c in master_df.columns]
-        other_cols = [c for c in master_df.columns if c not in front_cols]
+        other_cols = [col for col in master_df.columns if col not in front_cols]
         master_df = master_df[front_cols + other_cols]
     
     st.dataframe(master_df, use_container_width=True)
@@ -77,7 +76,6 @@ else:
     if mins_col:
         df[mins_col] = pd.to_numeric(df[mins_col], errors="coerce").fillna(0)
         max_mins = int(df[mins_col].max()) if not df[mins_col].empty and df[mins_col].max() > 0 else 5000
-        # Default minimum slider set to 0 so no players are filtered out initially
         min_minutes = st.sidebar.slider("Minimum Minutes Played", 0, max_mins, 0)
         filtered_df = df[df[mins_col] >= min_minutes]
     else:
