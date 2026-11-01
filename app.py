@@ -319,29 +319,31 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 if selected_view.startswith("🏆"):
-    st.header("🏆 Master Recruitment Leaderboard")
-    st.markdown("Consolidated club-wide rankings evaluated using deterministic Min-Max normalization.")
+    st.header("🏆 Master Recruitment Leaderboard (Top 3 Per Position)")
+    st.markdown("Consolidated club-wide view featuring the top 3 ranked players from each position profile.")
     
     all_dfs = []
     for pos_name, df_pos in data.items():
         temp_df = df_pos.copy()
         temp_df["Position Tab"] = pos_name
-        all_dfs.append(temp_df)
+        # Keep only top 3 per position based on Rank or Composite Score
+        top_3_pos = temp_df.sort_values(by="Composite Score", ascending=False).head(3)
+        all_dfs.append(top_3_pos)
     
     master_df = pd.concat(all_dfs, ignore_index=True)
     master_df = master_df.sort_values(by="Composite Score", ascending=False).reset_index(drop=True)
     master_df["Club Rank"] = range(1, len(master_df) + 1)
     
+    # Front-load master columns
     front_cols = ['Club Rank', 'Player', 'Team', 'Position Tab', 'Composite Score', 'Minutes played', 'Age']
     other_cols = [c for c in master_df.columns if c not in front_cols]
     master_df = master_df[[c for c in front_cols if c in master_df.columns] + other_cols]
     
     st.dataframe(master_df, use_container_width=True)
     
-    st.subheader("Top 15 Targets Club-Wide")
-    top_15 = master_df.head(15)
-    if "Player" in top_15.columns and "Composite Score" in top_15.columns:
-        st.bar_chart(top_15.set_index("Player")["Composite Score"])
+    st.subheader("Top Multi-Position Targets")
+    if "Player" in master_df.columns and "Composite Score" in master_df.columns:
+        st.bar_chart(master_df.head(15).set_index("Player")["Composite Score"])
 
 else:
     position_name = selected_view.replace("📍 Position: ", "")
