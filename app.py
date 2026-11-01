@@ -259,12 +259,10 @@ def load_and_process_database():
     sheets_dict = {}
     
     for sheet_name in xls.sheet_names:
-        # Check header row depending on sheet format
         header_row = 0 if sheet_name == "Attacking Midfielders" else 2
         df_raw = pd.read_excel(xls, sheet_name=sheet_name, header=header_row)
         df_raw.columns = df_raw.columns.astype(str).str.strip()
         
-        # Foolproof Team Column Matching
         for col in df_raw.columns:
             if 'team' in col.lower() or 'club' in col.lower():
                 df_raw = df_raw.rename(columns={col: 'Team'})
@@ -277,7 +275,6 @@ def load_and_process_database():
         if 'id' in df_raw.columns:
             df_raw = df_raw.drop(columns=['id'])
             
-        # DYNAMICALLY CREATE COMBINED METRIC FOR CENTER BACKS
         if sheet_name == "Center Backs":
             if 'Defensive duels per 90' in df_raw.columns and 'Aerial duels per 90' in df_raw.columns:
                 df_raw['Total duels per 90'] = (
@@ -309,7 +306,6 @@ data = load_and_process_database()
 import base64
 
 def render_svg(svg_file, width=120):
-    """Renders an SVG file cleanly in Streamlit via base64 encoding."""
     if not os.path.exists(svg_file):
         return False
     try:
@@ -326,16 +322,21 @@ def render_svg(svg_file, width=120):
 # 4. USER INTERFACE & NAVIGATION
 # ==============================================================================
 
-# Attempt to render the SVG logo in the sidebar
-logo_rendered = render_svg("kerry_logo.svg", width=110) # Replace with your exact SVG filename
+logo_rendered = render_svg("kerry_logo.svg", width=110)
 
 if not logo_rendered:
     st.sidebar.markdown("🛡️ **Kerry FC Scouting**")
 
+# Initialize Session State for Potential Targets Shortlist & Notes
+if "potential_targets" not in st.session_state:
+    st.session_state.potential_targets = []  # List of dicts: {'Player': name, 'Position': pos}
+if "player_notes" not in st.session_state:
+    st.session_state.player_notes = {}  # Dict: {player_name: note_string}
+
 st.sidebar.title("Navigation")
-view_options = ["🏆 Master Leaderboard (All Positions)"] + [f"📍 Position: {pos}" for pos in data.keys()]
+view_options = ["🏆 Master Leaderboard (All Positions)", "⭐ Potential Targets (Meeting Shortlist)"] + [f"📍 Position: {pos}" for pos in data.keys()]
 selected_view = st.sidebar.selectbox("Select View", view_options)
-# Styled Branded Header Banner
+
 st.markdown("""
 <div class="main-title">
     <h1>Kerry FC Recruitment Platform</h1>
@@ -347,13 +348,12 @@ if selected_view.startswith("🏆"):
     st.header("🏆 Master Recruitment Leaderboard (Top 1 Per Position)")
     st.markdown("Consolidated club-wide view featuring the top-ranked target for each tactical position.")
     
-    # Define your exact desired position display order
     position_order = [
         "Goalkeepers",
         "Center Backs",
         "Left Backs",
         "Right Backs",
-        "Central Midfielders", # Matches your exact sheet name (or update to match your exact sheet title)
+        "Central Midfielders",
         "Attacking Midfielders",
         "Wingers",
         "Center Forwards"
@@ -361,16 +361,13 @@ if selected_view.startswith("🏆"):
     
     all_dfs = []
     
-    # Loop through in your strict order
     for pos_name in position_order:
-        # Match position name flexibly to your loaded sheets dict keys
         actual_sheet_key = next((k for k in data.keys() if pos_name.lower() in k.lower()), None)
         
         if actual_sheet_key and actual_sheet_key in data:
             df_pos = data[actual_sheet_key].copy()
             df_pos["Position Tab"] = actual_sheet_key
             
-            # Ensure team column is uniform
             if 'Team' not in df_pos.columns:
                 for col in df_pos.columns:
                     if 'team' in col.lower() or 'club' in col.lower():
@@ -381,16 +378,13 @@ if selected_view.startswith("🏆"):
             else:
                 df_pos['Team'] = df_pos['Team'].fillna("Unknown")
             
-            # Grab strictly the #1 top player for this position tab
             top_1_pos = df_pos.sort_values(by="Composite Score", ascending=False).head(1)
             all_dfs.append(top_1_pos)
     
     if all_dfs:
         master_df = pd.concat(all_dfs, ignore_index=True)
-        # Note: We do NOT re-sort by composite score here, preserving your requested position order!
         master_df["Club Rank"] = range(1, len(master_df) + 1)
         
-        # --- SELECT ONLY ESSENTIAL COLUMNS ---
         desired_columns = ['Club Rank', 'Player', 'Team', 'Position Tab', 'Composite Score', 'Minutes played', 'Age']
         display_columns = [col for col in desired_columns if col in master_df.columns]
         master_clean = master_df[display_columns]
@@ -406,13 +400,79 @@ if selected_view.startswith("🏆"):
     else:
         st.warning("No position data available to build the master leaderboard.")
 
+elif selected_view.startswith("⭐"):
+    st.header("⭐ Potential Targets Meeting Shortlist")
+    st.markdown("Curated shortlist for tomorrow's recruitment meeting with notes on contact status, interest, and next steps.")
+    
+    if not st.session_state.potential_targets:
+        st.info("Your potential targets shortlist is currently empty. Browse position shortlists and click **'⭐ Add to Potential Targets'** on any player to add them here.")
+    else:
+        # Convert shortlist to DataFrame for easy display & selection
+        shortlist_df = pd.DataFrame(st.session_state.potential_targets)
+        
+        # Pull latest metrics for shortlisted players
+        enriched_targets = []
+        for item in st.session_state.potential_targets:
+            p_name = item['Player']
+            p_pos = item['Position']
+            
+            p_data = {'Player': p_name, 'Position': p_pos}
+            if p_pos in data and 'Player' in data[p_pos].columns:
+                match = data[p_pos][data[p_pos]['Player'] == p_name]
+                if not match.empty:
+                    p_data['Composite Score'] = match.iloc[0].get('Composite Score', 'N/A')
+                    p_data['Age'] = match.iloc[0].get('Age', 'N/A')
+                    p_data['Minutes played'] = match.iloc[0].get('Minutes played', 'N/A')
+            enriched_targets.append(p_data)
+            
+        shortlist_summary = pd.DataFrame(enriched_targets)
+        st.subheader("Shortlisted Players Overview")
+        st.dataframe(shortlist_summary, use_container_width=True)
+        
+        st.markdown("---")
+        st.subheader("Manage Target & Meeting Notes")
+        target_names = [t['Player'] for t in st.session_state.potential_targets]
+        selected_target = st.selectbox("Select Target Player for Notes & Review", target_names)
+        
+        if selected_target:
+            target_info = next((t for t in st.session_state.potential_targets if t['Player'] == selected_target), None)
+            target_pos = target_info['Position'] if target_info else 'N/A'
+            
+            # Fetch stats
+            target_stats_df = pd.DataFrame()
+            if target_pos in data and 'Player' in data[target_pos].columns:
+                target_stats_df = data[target_pos][data[target_pos]['Player'] == selected_target]
+                
+            col1, col2 = st.columns([2, 1])
+            with col1:
+                st.markdown(f"**Target:** {selected_target} ({target_pos})")
+                current_note = st.session_state.player_notes.get(selected_target, "")
+                updated_note = st.text_area("Meeting Notes (Coach Contact, Rep Status, Interest & Next Steps)", value=current_note, height=140, key=f"note_{selected_target}")
+                
+                if st.button("Save Notes"):
+                    st.session_state.player_notes[selected_target] = updated_note
+                    st.success("Notes saved successfully!")
+                    
+            with col2:
+                st.markdown("### Actions")
+                if st.button(f"Remove {selected_target} from Shortlist", type="primary"):
+                    st.session_state.potential_targets = [t for t in st.session_state.potential_targets if t['Player'] != selected_target]
+                    st.rerun()
+                    
+            if not target_stats_df.empty:
+                st.markdown("---")
+                st.subheader(f"Full Metrics for {selected_target}")
+                pos_config_target = {
+                    "Player": st.column_config.TextColumn("Player", pinned=True)
+                }
+                st.dataframe(target_stats_df, use_container_width=True, column_config=pos_config_target)
+
 else:
     position_name = selected_view.replace("📍 Position: ", "")
     df_pos = data[position_name]
     
     st.header(f"Shortlist: {position_name}")
     
-    # Minutes Played Slider Filter in Sidebar
     mins_col = next((col for col in df_pos.columns if any(k in col.lower() for k in ["minute", "min"])), None)
     if mins_col:
         df_pos[mins_col] = pd.to_numeric(df_pos[mins_col], errors="coerce").fillna(0)
@@ -429,6 +489,26 @@ else:
     }
     st.dataframe(filtered_df, use_container_width=True, column_config=pos_config)
     
+    # --- ADD TO POTENTIAL TARGETS INTERACTIVE BUTTON SECTION ---
+    st.markdown("---")
+    st.subheader("Add Player to Meeting Shortlist")
+    
+    if 'Player' in filtered_df.columns and not filtered_df.empty:
+        player_to_add = st.selectbox("Select player to add to Potential Targets", filtered_df['Player'].tolist(), key=f"add_select_{position_name}")
+        
+        col_btn1, col_btn2 = st.columns([1, 4])
+        with col_btn1:
+            if st.button("⭐ Add to Potential Targets", key=f"btn_add_{position_name}"):
+                existing_names = [t['Player'] for t in st.session_state.potential_targets]
+                if player_to_add not in existing_names:
+                    st.session_state.potential_targets.append({
+                        'Player': player_to_add,
+                        'Position': position_name
+                    })
+                    st.success(f"Added **{player_to_add}** ({position_name}) to Potential Targets!")
+                else:
+                    st.warning(f"**{player_to_add}** is already in your Potential Targets shortlist.")
+        
     if "Composite Score" in filtered_df.columns and "Player" in filtered_df.columns:
         st.subheader(f"{position_name} Composite Performance Ranking")
         chart_data = filtered_df.set_index("Player")["Composite Score"].dropna()
