@@ -327,14 +327,16 @@ logo_rendered = render_svg("kerry_logo.svg", width=110)
 if not logo_rendered:
     st.sidebar.markdown("🛡️ **Kerry FC Scouting**")
 
-# Initialize Session State for Potential Targets Shortlist & Notes
+# Initialize Session States
 if "potential_targets" not in st.session_state:
-    st.session_state.potential_targets = []  # List of dicts: {'Player': name, 'Position': pos}
+    st.session_state.potential_targets = []
 if "player_notes" not in st.session_state:
-    st.session_state.player_notes = {}  # Dict: {player_name: note_string}
+    st.session_state.player_notes = {}
+if "squad_status" not in st.session_state:
+    st.session_state.squad_status = {}
 
 st.sidebar.title("Navigation")
-view_options = ["🏆 Master Leaderboard (All Positions)", "⭐ Potential Targets"] + [f"📍 Position: {pos}" for pos in data.keys()]
+view_options = ["🏆 Master Leaderboard (All Positions)", "⭐ Potential Targets", "⚽ Current Squad Info"] + [f"📍 Position: {pos}" for pos in data.keys()]
 selected_view = st.sidebar.selectbox("Select View", view_options)
 
 st.markdown("""
@@ -461,6 +463,78 @@ elif selected_view.startswith("⭐"):
                     "Player": st.column_config.TextColumn("Player", pinned=True)
                 }
                 st.dataframe(target_stats_df, use_container_width=True, column_config=pos_config_target)
+
+elif selected_view.startswith("⚽"):
+    st.header("⚽ Current Squad Info")
+    st.markdown("Manage current squad contracts using a traffic-light status system (🟢 Signed, 🟡 Pending Offer, 🔴 To Be Released).")
+    
+    all_squad_players = []
+    for pos_name, df_pos in data.items():
+        if 'Team' in df_pos.columns:
+            kerry_players = df_pos[df_pos['Team'].str.contains("Kerry", case=False, na=False)]
+            for _, row in kerry_players.iterrows():
+                all_squad_players.append({
+                    'Player': row['Player'],
+                    'Position': pos_name,
+                    'Age': row.get('Age', 'N/A'),
+                    'Minutes played': row.get('Minutes played', 'N/A'),
+                    'Composite Score': row.get('Composite Score', 'N/A')
+                })
+                
+    if not all_squad_players:
+        st.info("No explicit 'Kerry FC' team string found in dataset rows. Showing top squad options for retention tagging:")
+        for pos_name, df_pos in data.items():
+            top_few = df_pos.head(2)
+            for _, row in top_few.iterrows():
+                all_squad_players.append({
+                    'Player': row['Player'],
+                    'Position': pos_name,
+                    'Age': row.get('Age', 'N/A'),
+                    'Minutes played': row.get('Minutes played', 'N/A'),
+                    'Composite Score': row.get('Composite Score', 'N/A')
+                })
+                
+    squad_df = pd.DataFrame(all_squad_players)
+    
+    if not squad_df.empty:
+        st.subheader("Current Squad Retention Dashboard")
+        
+        selected_squad_player = st.selectbox("Select Squad Player to Update Status", squad_df['Player'].tolist())
+        
+        if selected_squad_player:
+            player_record = squad_df[squad_df['Player'] == selected_squad_player].iloc[0]
+            current_status = st.session_state.squad_status.get(selected_squad_player, "🟢 Signed / Retained")
+            
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.metric("Position", player_record['Position'])
+            with c2:
+                st.metric("Age", player_record['Age'])
+            with c3:
+                st.metric("Composite Score", player_record['Composite Score'])
+                
+            new_status = st.radio(
+                "Contract & Retention Status",
+                ["🟢 Signed / Retained", "🟡 Contract Pending / Offer Made", "🔴 To Be Released / Departures"],
+                index=["🟢 Signed / Retained", "🟡 Contract Pending / Offer Made", "🔴 To Be Released / Departures"].index(current_status)
+            )
+            
+            if st.button("Update Player Status"):
+                st.session_state.squad_status[selected_squad_player] = new_status
+                st.success(f"Updated retention status for **{selected_squad_player}** to {new_status}")
+                
+        st.markdown("---")
+        st.subheader("Current Squad Overview")
+        
+        display_squad = squad_df.copy()
+        display_squad['Retention Status'] = display_squad['Player'].apply(lambda x: st.session_state.squad_status.get(x, "🟢 Signed / Retained"))
+        
+        squad_config = {
+            "Player": st.column_config.TextColumn("Player", pinned=True)
+        }
+        st.dataframe(display_squad[['Player', 'Position', 'Retention Status', 'Age', 'Minutes played', 'Composite Score']], use_container_width=True, hide_index=True, column_config=squad_config)
+    else:
+        st.warning("No squad data available.")
 
 else:
     position_name = selected_view.replace("📍 Position: ", "")
