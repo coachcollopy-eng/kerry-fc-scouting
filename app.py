@@ -80,6 +80,14 @@ st.markdown("""
         color: #1E293B;
     }
 
+    /* Fix Radio Button and Widget Label Text Colors to Black */
+    div[data-baseweb="radio"] label span, 
+    div[data-testid="stRadio"] label p,
+    label[data-baseweb="checkbox"] span,
+    .stRadio label {
+        color: #000000 !important;
+    }
+
     /* DataFrame container styling */
     div[data-testid="stDataFrame"] {
         border: 1px solid #E2E8F0;
