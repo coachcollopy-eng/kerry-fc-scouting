@@ -247,13 +247,23 @@ def load_and_process_database():
     
     for sheet_name in xls.sheet_names:
         df_raw = pd.read_excel(xls, sheet_name=sheet_name, header=2)
+        # Strip all whitespace from column headers
         df_raw.columns = df_raw.columns.astype(str).str.strip()
         
-        # --- NORMALIZE TEAM COLUMN VARIATIONS ACROSS SHEETS ---
+        # --- ROBUST TEAM COLUMN STANDARDIZATION ---
+        team_col_found = False
         for col in df_raw.columns:
-            if col.lower() in ['team', 'current team', 'club', 'team name']:
+            # Check for any variation of team or club headers case-insensitively
+            if col.lower() in ['team', 'current team', 'club', 'team name', 'current club']:
                 df_raw = df_raw.rename(columns={col: 'Team'})
+                team_col_found = True
                 break
+        
+        # If no team column exists at all, create a blank one so it doesn't break concat
+        if not team_col_found:
+            df_raw['Team'] = "Unknown"
+        else:
+            df_raw['Team'] = df_raw['Team'].fillna("Unknown")
 
         if 'id' in df_raw.columns:
             df_raw = df_raw.drop(columns=['id'])
