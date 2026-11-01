@@ -284,11 +284,14 @@ data = load_and_process_database()
 # ==============================================================================
 # 4. USER INTERFACE & NAVIGATION
 # ==============================================================================
+# Option A: Display logo in the sidebar
+if os.path.exists("kerry_logo.png"):
+    st.sidebar.image("kerry_logo.png", width=120)
+
 st.sidebar.title("⚽ Kerry FC Scouting")
 st.sidebar.markdown("---")
 view_options = ["🏆 Master Leaderboard (All Positions)"] + [f"📍 Position: {pos}" for pos in data.keys()]
 selected_view = st.sidebar.selectbox("Select View", view_options)
-
 # Styled Branded Header Banner
 st.markdown("""
 <div class="main-title">
