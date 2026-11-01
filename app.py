@@ -342,7 +342,16 @@ if selected_view.startswith("🏆"):
     for pos_name, df_pos in data.items():
         temp_df = df_pos.copy()
         temp_df["Position Tab"] = pos_name
-        # Keep only top 3 per position based on Rank or Composite Score
+        
+        # Ensure team column is uniform
+        if 'Team' not in temp_df.columns:
+            for col in temp_df.columns:
+                if 'team' in col.lower() or 'club' in col.lower():
+                    temp_df = temp_df.rename(columns={col: 'Team'})
+                    break
+            if 'Team' not in temp_df.columns:
+                temp_df['Team'] = "Unknown"
+                
         top_3_pos = temp_df.sort_values(by="Composite Score", ascending=False).head(3)
         all_dfs.append(top_3_pos)
     
@@ -350,16 +359,17 @@ if selected_view.startswith("🏆"):
     master_df = master_df.sort_values(by="Composite Score", ascending=False).reset_index(drop=True)
     master_df["Club Rank"] = range(1, len(master_df) + 1)
     
-    # Front-load master columns
-    front_cols = ['Club Rank', 'Player', 'Team', 'Position Tab', 'Composite Score', 'Minutes played', 'Age']
-    other_cols = [c for c in master_df.columns if c not in front_cols]
-    master_df = master_df[[c for c in front_cols if c in master_df.columns] + other_cols]
+    # --- SELECT ONLY ESSENTIAL COLUMNS ---
+    desired_columns = ['Club Rank', 'Player', 'Team', 'Position Tab', 'Composite Score', 'Minutes played', 'Age']
+    # Keep only columns that actually exist in the dataframe
+    display_columns = [col for col in desired_columns if col in master_df.columns]
+    master_clean = master_df[display_columns]
     
-    st.dataframe(master_df, use_container_width=True)
+    st.dataframe(master_clean, use_container_width=True, hide_index=True)
     
     st.subheader("Top Multi-Position Targets")
-    if "Player" in master_df.columns and "Composite Score" in master_df.columns:
-        st.bar_chart(master_df.head(15).set_index("Player")["Composite Score"])
+    if "Player" in master_clean.columns and "Composite Score" in master_clean.columns:
+        st.bar_chart(master_clean.head(15).set_index("Player")["Composite Score"])
 
 else:
     position_name = selected_view.replace("📍 Position: ", "")
