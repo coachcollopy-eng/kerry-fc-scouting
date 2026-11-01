@@ -149,6 +149,19 @@ POSITION_PROFILES = {
         },
         "inverse_metrics": []
     },
+    "Attacking Midfielders": {
+        "weights": {
+            'xA per 90': 0.15,
+            'Key passes per 90': 0.15,
+            'Progressive passes per 90': 0.125,
+            'Accurate passes, %': 0.125,
+            'Passes to final third per 90': 0.10,
+            'xG per 90': 0.10,
+            'Successful dribbles, %': 0.10,
+            'Progressive runs per 90': 0.10
+        },
+        "inverse_metrics": []
+    },
     "Wingers": {
         "weights": {
             'Successful dribbles, %': 0.125,
