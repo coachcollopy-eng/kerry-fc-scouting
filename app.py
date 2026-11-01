@@ -334,7 +334,7 @@ if "player_notes" not in st.session_state:
     st.session_state.player_notes = {}  # Dict: {player_name: note_string}
 
 st.sidebar.title("Navigation")
-view_options = ["🏆 Master Leaderboard (All Positions)", "⭐ Potential Targets (Meeting Shortlist)"] + [f"📍 Position: {pos}" for pos in data.keys()]
+view_options = ["🏆 Master Leaderboard (All Positions)", "⭐ Potential Targets"] + [f"📍 Position: {pos}" for pos in data.keys()]
 selected_view = st.sidebar.selectbox("Select View", view_options)
 
 st.markdown("""
