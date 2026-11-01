@@ -395,7 +395,17 @@ if selected_view.startswith("🏆"):
         display_columns = [col for col in desired_columns if col in master_df.columns]
         master_clean = master_df[display_columns]
         
-        st.dataframe(master_clean, use_container_width=True, hide_index=True)
+        master_config = {}
+if "Player" in master_clean.columns:
+    master_config["Player"] = st.column_config.TextColumn("Player", pinned=True)
+if "Club Rank" in master_clean.columns:
+    master_config["Club Rank"] = st.column_config.NumberColumn("Club Rank", pinned=True)
+if "Team" in master_clean.columns:
+    master_config["Team"] = st.column_config.TextColumn("Team", pinned=True)
+if "Position Tab" in master_clean.columns:
+    master_config["Position Tab"] = st.column_config.TextColumn("Position Tab", pinned=True)
+
+st.dataframe(master_clean, use_container_width=True, hide_index=True, column_config=master_config)
         
         st.subheader("Top Tier Targets by Position")
         if "Player" in master_clean.columns and "Composite Score" in master_clean.columns:
@@ -421,7 +431,16 @@ else:
     else:
         filtered_df = df_pos
 
-    st.dataframe(filtered_df, use_container_width=True)
+    # Configure columns to pin Player (and optionally Rank/Team) to the left
+column_config = {}
+if "Player" in filtered_df.columns:
+    column_config["Player"] = st.column_config.TextColumn("Player", pinned=True)
+if "Rank" in filtered_df.columns:
+    column_config["Rank"] = st.column_config.NumberColumn("Rank", pinned=True)
+if "Team" in filtered_df.columns:
+    column_config["Team"] = st.column_config.TextColumn("Team", pinned=True)
+
+st.dataframe(filtered_df, use_container_width=True, column_config=column_config)
     
     if "Composite Score" in filtered_df.columns and "Player" in filtered_df.columns:
         st.subheader(f"{position_name} Composite Performance Ranking")
