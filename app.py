@@ -153,12 +153,12 @@ POSITION_PROFILES = {
         "weights": {
             'xA per 90': 0.15,
             'Key passes per 90': 0.15,
-            'Progressive passes per 90': 0.125,
-            'Accurate passes, %': 0.125,
+            'Progressive passes per 90': 0.15,
+            'Accurate passes, %': 0.10,
             'Passes to final third per 90': 0.10,
             'xG per 90': 0.10,
-            'Successful dribbles, %': 0.10,
-            'Progressive runs per 90': 0.10
+            'Successful dribbles, %': 0.125,
+            'Progressive runs per 90': 0.125
         },
         "inverse_metrics": []
     },
@@ -259,23 +259,19 @@ def load_and_process_database():
     sheets_dict = {}
     
     for sheet_name in xls.sheet_names:
-        df_raw = pd.read_excel(xls, sheet_name=sheet_name, header=2)
+        # Check header row depending on sheet format
+        header_row = 0 if sheet_name == "Attacking Midfielders" else 2
+        df_raw = pd.read_excel(xls, sheet_name=sheet_name, header=header_row)
         df_raw.columns = df_raw.columns.astype(str).str.strip()
         
-        # --- FOOLPROOF TEAM COLUMN MATCHING ---
-        team_col_found = False
+        # Foolproof Team Column Matching
         for col in df_raw.columns:
-            col_lower = col.lower()
-            # Catches "Team", "Current team", "Team within selected timeframe", "Club", etc.
-            if 'team' in col_lower or 'club' in col_lower:
+            if 'team' in col.lower() or 'club' in col.lower():
                 df_raw = df_raw.rename(columns={col: 'Team'})
-                team_col_found = True
                 break
-        
-        if not team_col_found:
+        if 'Team' not in df_raw.columns:
             df_raw['Team'] = "Unknown"
         else:
-            # Clean up missing/NaN rows
             df_raw['Team'] = df_raw['Team'].fillna("Unknown")
 
         if 'id' in df_raw.columns:
