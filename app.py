@@ -12,6 +12,46 @@ st.set_page_config(
 )
 
 # ==============================================================================
+# PASSWORD AUTHENTICATION GATE
+# ==============================================================================
+def check_password():
+    """Returns True if the user enters the correct password."""
+    def password_entered():
+        if st.session_state["password"] == "recruitment27":  # Replace with your desired coach password
+            st.session_state["password_correct"] = True
+            del st.session_state["password"]  # Don't store plain-text password in session state
+        else:
+            st.session_state["password_correct"] = False
+
+    if "password_correct" not in st.session_state:
+        # First run, show password input box
+        st.markdown("<h2 style='color: #0B3B2C;'>🛡️ Kerry FC Scouting Portal Login</h2>", unsafe_allow_html=True)
+        st.text_input(
+            "🔒 Enter Coaching Staff Password to Access Hub", 
+            type="password", 
+            on_change=password_entered, 
+            key="password"
+        )
+        return False
+    elif not st.session_state["password_correct"]:
+        # Password incorrect, show input + error message
+        st.markdown("<h2 style='color: #0B3B2C;'>🛡️ Kerry FC Scouting Portal Login</h2>", unsafe_allow_html=True)
+        st.text_input(
+            "🔒 Enter Coaching Staff Password to Access Hub", 
+            type="password", 
+            on_change=password_entered, 
+            key="password"
+        )
+        st.error("😕 Incorrect password. Please contact the Head Coach for access.")
+        return False
+    else:
+        return True
+
+# Stop script execution immediately if password is not verified
+if not check_password():
+    st.stop()
+
+# ==============================================================================
 # KERRY FC CUSTOM CSS STYLING (Green & Gold Theme)
 # ==============================================================================
 st.markdown("""
