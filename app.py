@@ -1,4 +1,5 @@
 import os
+import json
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -107,6 +108,7 @@ st.markdown("""
 # Path to Master Database & Squad Files
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 EXCEL_PATH = os.path.join(BASE_DIR, "Kerry_FC_Master_Scouting_Database_2026.xlsx")
+STATE_FILE_PATH = os.path.join(BASE_DIR, "squad_state.json")
 
 SQUAD_FILES = {
     "Goalkeepers": os.path.join(BASE_DIR, "Current Squad - GK's.xlsx"),
@@ -117,6 +119,40 @@ SQUAD_FILES = {
     "Wingers": os.path.join(BASE_DIR, "Current Squad - W's.xlsx"),
     "Center Forwards": os.path.join(BASE_DIR, "Current Squad - CF's.xlsx")
 }
+
+# ==============================================================================
+# PERSISTENT STATE MANAGEMENT (JSON STORAGE)
+# ==============================================================================
+def load_persisted_state():
+    if os.path.exists(STATE_FILE_PATH):
+        try:
+            with open(STATE_FILE_PATH, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {"potential_targets": [], "player_notes": {}, "squad_status": {}, "squad_accommodation": {}}
+
+def save_persisted_state():
+    data = {
+        "potential_targets": st.session_state.get("potential_targets", []),
+        "player_notes": st.session_state.get("player_notes", {}),
+        "squad_status": st.session_state.get("squad_status", {}),
+        "squad_accommodation": st.session_state.get("squad_accommodation", {})
+    }
+    try:
+        with open(STATE_FILE_PATH, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=4)
+    except Exception as e:
+        st.error(f"Error saving state: {e}")
+
+# Initialize Session States from Persistence File
+if "initialized" not in st.session_state:
+    saved_data = load_persisted_state()
+    st.session_state.potential_targets = saved_data.get("potential_targets", [])
+    st.session_state.player_notes = saved_data.get("player_notes", {})
+    st.session_state.squad_status = saved_data.get("squad_status", {})
+    st.session_state.squad_accommodation = saved_data.get("squad_accommodation", {})
+    st.session_state.initialized = True
 
 # ==============================================================================
 # 1. LOCKED POSITION-SPECIFIC WEIGHT DICTIONARIES (Must Sum to 1.00)
@@ -379,16 +415,6 @@ logo_rendered = render_svg("kerry_logo.svg", width=110)
 if not logo_rendered:
     st.sidebar.markdown("🛡️ **Kerry FC Scouting**")
 
-# Initialize Session States
-if "potential_targets" not in st.session_state:
-    st.session_state.potential_targets = []
-if "player_notes" not in st.session_state:
-    st.session_state.player_notes = {}
-if "squad_status" not in st.session_state:
-    st.session_state.squad_status = {}
-if "squad_accommodation" not in st.session_state:
-    st.session_state.squad_accommodation = {}
-
 st.sidebar.title("Navigation")
 view_options = ["🏆 Master Leaderboard (All Positions)", "⭐ Potential Targets", "⚽ Current Squad Info"] + [f"📍 Position: {pos}" for pos in data.keys()]
 selected_view = st.sidebar.selectbox("Select View", view_options)
@@ -502,12 +528,14 @@ elif selected_view.startswith("⭐"):
                 
                 if st.button("Save Notes"):
                     st.session_state.player_notes[selected_target] = updated_note
+                    save_persisted_state()
                     st.success("Notes saved successfully!")
                     
             with col2:
                 st.markdown("### Actions")
                 if st.button(f"Remove {selected_target} from Shortlist", type="primary"):
                     st.session_state.potential_targets = [t for t in st.session_state.potential_targets if t['Player'] != selected_target]
+                    save_persisted_state()
                     st.rerun()
                     
             if not target_stats_df.empty:
@@ -582,10 +610,20 @@ elif selected_view.startswith("⚽"):
                     key=f"editor_{group_name}"
                 )
                 
+                # Check for changes and persist immediately
+                data_changed = False
                 for _, row in edited_df.iterrows():
                     p_name = row['Player']
-                    st.session_state.squad_status[p_name] = row['Status']
-                    st.session_state.squad_accommodation[p_name] = bool(row['Accommodation'])
+                    new_st = row['Status']
+                    new_acc = bool(row['Accommodation'])
+                    
+                    if st.session_state.squad_status.get(p_name) != new_st or st.session_state.squad_accommodation.get(p_name) != new_acc:
+                        st.session_state.squad_status[p_name] = new_st
+                        st.session_state.squad_accommodation[p_name] = new_acc
+                        data_changed = True
+                
+                if data_changed:
+                    save_persisted_state()
                     
             else:
                 st.info(f"No records found for group {group_name}.")
@@ -631,6 +669,7 @@ else:
                         'Player': player_to_add,
                         'Position': position_name
                     })
+                    save_persisted_state()
                     st.success(f"Added **{player_to_add}** ({position_name}) to Potential Targets!")
                 else:
                     st.warning(f"**{player_to_add}** is already in your Potential Targets shortlist.")
