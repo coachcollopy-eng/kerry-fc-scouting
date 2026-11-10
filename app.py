@@ -170,10 +170,11 @@ def load_persisted_state():
                 return json.load(f)
         except Exception:
             pass
-    return {"player_notes": {}, "squad_status": {}, "squad_accommodation": {}}
+    return {"potential_targets": [], "player_notes": {}, "squad_status": {}, "squad_accommodation": {}}
 
 def save_persisted_state():
     data = {
+        "potential_targets": st.session_state.get("potential_targets", []),
         "player_notes": st.session_state.get("player_notes", {}),
         "squad_status": st.session_state.get("squad_status", {}),
         "squad_accommodation": st.session_state.get("squad_accommodation", {})
@@ -187,6 +188,7 @@ def save_persisted_state():
 # Initialize Session States from Persistence File
 if "initialized" not in st.session_state:
     saved_data = load_persisted_state()
+    st.session_state.potential_targets = saved_data.get("potential_targets", [])
     st.session_state.player_notes = saved_data.get("player_notes", {})
     st.session_state.squad_status = saved_data.get("squad_status", {})
     st.session_state.squad_accommodation = saved_data.get("squad_accommodation", {})
@@ -320,7 +322,45 @@ POSITION_PROFILES = {
 }
 
 # ==============================================================================
-# 2. ZERO-DISCREPANCY RANKING ENGINE FUNCTION
+# FIXED LEAGUE BENCHMARKS FOR STABLE MIN-MAX NORMALIZATION
+# ==============================================================================
+FIXED_BENCHMARKS = {
+    'Defensive duels won, %': (40.0, 90.0),
+    'Aerial duels won, %': (30.0, 80.0),
+    'Total duels per 90': (5.0, 18.0),
+    'PAdj Interceptions': (4.0, 12.0),
+    'Fouls per 90': (0.2, 2.5),
+    'Successful defensive actions per 90': (5.0, 16.0),
+    'Accurate passes, %': (50.0, 95.0),
+    'Accurate forward passes, %': (40.0, 85.0),
+    'Forward passes per 90': (8.0, 70.0),
+    'Accurate long passes, %': (30.0, 75.0),
+    'Crosses per 90': (0.3, 5.0),
+    'Accurate crosses, %': (10.0, 60.0),
+    'xA per 90': (0.01, 0.25),
+    'Successful dribbles, %': (20.0, 90.0),
+    'Accurate progressive passes, %': (30.0, 85.0),
+    'Passes to final third per 90': (2.0, 15.0),
+    'Progressive passes per 90': (3.0, 15.0),
+    'Offensive duels won, %': (10.0, 80.0),
+    'Progressive runs per 90': (0.1, 8.0),
+    'Key passes per 90': (0.1, 1.5),
+    'xG per 90': (0.05, 0.70),
+    'Dribbles per 90': (0.5, 8.0),
+    'Shots on target, %': (15.0, 75.0),
+    'Shots per 90': (0.5, 4.5),
+    'Touches in box per 90': (1.0, 8.0),
+    'Accurate passes to final third, %': (30.0, 90.0),
+    'Goals per 90': (0.05, 0.80),
+    'Goal conversion, %': (5.0, 40.0),
+    'Received long passes per 90': (0.5, 6.0),
+    'Save rate, %': (45.0, 85.0),
+    'Prevented goals per 90': (-0.6, 0.4),
+    'Conceded goals per 90': (0.5, 2.5)
+}
+
+# ==============================================================================
+# 2. ZERO-DISCREPANCY STABLE RANKING ENGINE FUNCTION
 # ==============================================================================
 def calculate_absolute_ranking(df: pd.DataFrame, weights: dict, inverse_metrics: list = None) -> pd.DataFrame:
     if inverse_metrics is None:
@@ -337,13 +377,19 @@ def calculate_absolute_ranking(df: pd.DataFrame, weights: dict, inverse_metrics:
     for metric, weight in weights.items():
         if metric in df_clean.columns:
             s = pd.to_numeric(df_clean[metric], errors='coerce').fillna(0)
-            min_val = s.min()
-            max_val = s.max()
+            
+            # Use fixed benchmark bounds if available for absolute stability across updates
+            if metric in FIXED_BENCHMARKS:
+                min_val, max_val = FIXED_BENCHMARKS[metric]
+            else:
+                min_val = s.min()
+                max_val = s.max()
             
             if max_val == min_val:
                 scaled = pd.Series(50.0, index=df_clean.index)
             else:
-                scaled = (s - min_val) / (max_val - min_val) * 100.0
+                s_clipped = s.clip(lower=min_val, upper=max_val)
+                scaled = (s_clipped - min_val) / (max_val - min_val) * 100.0
                 
             if metric in inverse_metrics:
                 scaled = 100.0 - scaled
@@ -525,7 +571,6 @@ elif selected_view.startswith("⚽"):
     st.markdown("Review current squad members across separate positional tables and manage their contract retention status & accommodation.")
     
     if current_squad_dict:
-        # Calculate total accommodation count
         all_squad_players = []
         for group_name, df_squad in current_squad_dict.items():
             if 'Player' in df_squad.columns:
@@ -533,13 +578,11 @@ elif selected_view.startswith("⚽"):
                     all_squad_players.append(row['Player'])
                     
         total_filled_rooms = sum(1 for p in all_squad_players if st.session_state.squad_accommodation.get(p, False))
-        total_rooms_capacity = 10  # Configurable capacity limit
+        total_rooms_capacity = 10  
         
-        # Display Accommodation Metric Banner at the top
         st.metric(label="Club Accommodation Usage", value=f"{total_filled_rooms} / {total_rooms_capacity} rooms filled")
         st.markdown("---")
         
-        # Render separate interactive table for each positional group file
         for group_name, df_squad in current_squad_dict.items():
             st.markdown(f"### 📍 Squad: {group_name}")
             if not df_squad.empty:
@@ -584,7 +627,6 @@ elif selected_view.startswith("⚽"):
                     key=f"editor_{group_name}"
                 )
                 
-                # Check for changes and persist immediately
                 data_changed = False
                 for _, row in edited_df.iterrows():
                     p_name = row['Player']
@@ -632,7 +674,7 @@ else:
         "Player": st.column_config.TextColumn("Player", pinned=True)
     }
     st.dataframe(filtered_df, use_container_width=True, column_config=pos_config)
-        
+    
     if "Composite Score" in filtered_df.columns and "Player" in filtered_df.columns:
         st.subheader(f"{position_name} Composite Performance Ranking")
         chart_data = filtered_df.set_index("Player")["Composite Score"].dropna()
