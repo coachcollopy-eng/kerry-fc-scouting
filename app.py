@@ -170,11 +170,10 @@ def load_persisted_state():
                 return json.load(f)
         except Exception:
             pass
-    return {"potential_targets": [], "player_notes": {}, "squad_status": {}, "squad_accommodation": {}}
+    return {"player_notes": {}, "squad_status": {}, "squad_accommodation": {}}
 
 def save_persisted_state():
     data = {
-        "potential_targets": st.session_state.get("potential_targets", []),
         "player_notes": st.session_state.get("player_notes", {}),
         "squad_status": st.session_state.get("squad_status", {}),
         "squad_accommodation": st.session_state.get("squad_accommodation", {})
@@ -188,7 +187,6 @@ def save_persisted_state():
 # Initialize Session States from Persistence File
 if "initialized" not in st.session_state:
     saved_data = load_persisted_state()
-    st.session_state.potential_targets = saved_data.get("potential_targets", [])
     st.session_state.player_notes = saved_data.get("player_notes", {})
     st.session_state.squad_status = saved_data.get("squad_status", {})
     st.session_state.squad_accommodation = saved_data.get("squad_accommodation", {})
@@ -256,7 +254,8 @@ POSITION_PROFILES = {
             'Progressive passes per 90': 0.10,
             'Offensive duels won, %': 0.05,
             'Successful dribbles, %': 0.075,
-            'Defensive duels won, %': 0.15,
+            'Progressive runs per 90': 0.05,
+            'Defensive duels won, %': 0.10,
             'PAdj Interceptions': 0.10,
             'xA per 90': 0.05
         },
@@ -455,7 +454,7 @@ if not logo_rendered:
     st.sidebar.markdown("🛡️ **Kerry FC Scouting**")
 
 st.sidebar.title("Navigation")
-view_options = ["🏆 Master Leaderboard (All Positions)", "⭐ Potential Targets", "⚽ Current Squad Info"] + [f"📍 Position: {pos}" for pos in data.keys()]
+view_options = ["🏆 Master Leaderboard (All Positions)", "⚽ Current Squad Info"] + [f"📍 Position: {pos}" for pos in data.keys()]
 selected_view = st.sidebar.selectbox("Select View", view_options)
 
 st.markdown("""
@@ -520,70 +519,6 @@ if selected_view.startswith("🏆"):
             st.bar_chart(master_clean.set_index("Player")["Composite Score"])
     else:
         st.warning("No position data available to build the master leaderboard.")
-
-elif selected_view.startswith("⭐"):
-    st.header("⭐ Potential Targets Shortlist")
-    st.markdown("Curated shortlist with notes on contact status, interest, and next steps.")
-    
-    if not st.session_state.potential_targets:
-        st.info("Your potential targets shortlist is currently empty. Browse position shortlists and click **'⭐ Add to Potential Targets'** on any player to add them here.")
-    else:
-        enriched_targets = []
-        for item in st.session_state.potential_targets:
-            p_name = item['Player']
-            p_pos = item['Position']
-            
-            p_data = {'Player': p_name, 'Position': p_pos}
-            if p_pos in data and 'Player' in data[p_pos].columns:
-                match = data[p_pos][data[p_pos]['Player'] == p_name]
-                if not match.empty:
-                    p_data['Composite Score'] = match.iloc[0].get('Composite Score', 'N/A')
-                    p_data['Age'] = match.iloc[0].get('Age', 'N/A')
-                    p_data['Minutes played'] = match.iloc[0].get('Minutes played', 'N/A')
-            enriched_targets.append(p_data)
-            
-        shortlist_summary = pd.DataFrame(enriched_targets)
-        st.subheader("Shortlisted Players Overview")
-        st.dataframe(shortlist_summary, use_container_width=True)
-        
-        st.markdown("---")
-        st.subheader("Manage Target & Meeting Notes")
-        target_names = [t['Player'] for t in st.session_state.potential_targets]
-        selected_target = st.selectbox("Select Target Player for Notes & Review", target_names)
-        
-        if selected_target:
-            target_info = next((t for t in st.session_state.potential_targets if t['Player'] == selected_target), None)
-            target_pos = target_info['Position'] if target_info else 'N/A'
-            
-            target_stats_df = pd.DataFrame()
-            if target_pos in data and 'Player' in data[target_pos].columns:
-                target_stats_df = data[target_pos][data[target_pos]['Player'] == selected_target]
-                
-            col1, col2 = st.columns([2, 1])
-            with col1:
-                st.markdown(f"**Target:** {selected_target} ({target_pos})")
-                current_note = st.session_state.player_notes.get(selected_target, "")
-                updated_note = st.text_area("Meeting Notes (Coach Contact, Rep Status, Interest & Next Steps)", value=current_note, height=140, key=f"note_{selected_target}")
-                
-                if st.button("Save Notes"):
-                    st.session_state.player_notes[selected_target] = updated_note
-                    save_persisted_state()
-                    st.success("Notes saved successfully!")
-                    
-            with col2:
-                st.markdown("### Actions")
-                if st.button(f"Remove {selected_target} from Shortlist", type="primary"):
-                    st.session_state.potential_targets = [t for t in st.session_state.potential_targets if t['Player'] != selected_target]
-                    save_persisted_state()
-                    st.rerun()
-                    
-            if not target_stats_df.empty:
-                st.markdown("---")
-                st.subheader(f"Full Metrics for {selected_target}")
-                pos_config_target = {
-                    "Player": st.column_config.TextColumn("Player", pinned=True)
-                }
-                st.dataframe(target_stats_df, use_container_width=True, column_config=pos_config_target)
 
 elif selected_view.startswith("⚽"):
     st.header("⚽ Current Squad Info (Positional Breakdown & Green Light System)")
@@ -663,6 +598,12 @@ elif selected_view.startswith("⚽"):
                 
                 if data_changed:
                     save_persisted_state()
+                    file_path = SQUAD_FILES.get(group_name)
+                    if file_path:
+                        try:
+                            edited_df.to_excel(file_path, index=False)
+                        except Exception as e:
+                            st.error(f"Error saving to Excel file {file_path}: {e}")
                     
             else:
                 st.info(f"No records found for group {group_name}.")
@@ -691,27 +632,6 @@ else:
         "Player": st.column_config.TextColumn("Player", pinned=True)
     }
     st.dataframe(filtered_df, use_container_width=True, column_config=pos_config)
-    
-    # --- ADD TO POTENTIAL TARGETS INTERACTIVE SECTION ---
-    st.markdown("---")
-    st.subheader("Add Player to Meeting Shortlist")
-    
-    if 'Player' in filtered_df.columns and not filtered_df.empty:
-        player_to_add = st.selectbox("Select player to add to Potential Targets", filtered_df['Player'].tolist(), key=f"add_select_{position_name}")
-        
-        col_btn1, col_btn2 = st.columns([1, 4])
-        with col_btn1:
-            if st.button("⭐ Add to Potential Targets", key=f"btn_add_{position_name}"):
-                existing_names = [t['Player'] for t in st.session_state.potential_targets]
-                if player_to_add not in existing_names:
-                    st.session_state.potential_targets.append({
-                        'Player': player_to_add,
-                        'Position': position_name
-                    })
-                    save_persisted_state()
-                    st.success(f"Added **{player_to_add}** ({position_name}) to Potential Targets!")
-                else:
-                    st.warning(f"**{player_to_add}** is already in your Potential Targets shortlist.")
         
     if "Composite Score" in filtered_df.columns and "Player" in filtered_df.columns:
         st.subheader(f"{position_name} Composite Performance Ranking")
