@@ -266,7 +266,7 @@ POSITION_PROFILES = {
     "Attacking Midfielders": {
         "weights": {
             'xA per 90': 0.10,
-            'xA Surplus per 90': 0.05,       # Rewards unrewarded chance creation (xA per 90 > Assists per 90)
+            'xA Surplus': 0.05,              # Rewards unrewarded chance creation & reflects team finishing context
             'Key passes per 90': 0.075,
             'Progressive passes per 90': 0.125,
             'Accurate progressive passes, %': 0.05,
@@ -284,7 +284,7 @@ POSITION_PROFILES = {
             'Successful dribbles, %': 0.15,
             'xG per 90': 0.075,
             'xA per 90': 0.075,
-            'xA Surplus per 90': 0.05,       # Rewards unrewarded chance creation (xA per 90 > Assists per 90)
+            'xA Surplus': 0.05,              # Rewards unrewarded chance creation & reflects team finishing context
             'Accurate passes to final third, %': 0.075,
             'Crosses per 90': 0.075,
             'Dribbles per 90': 0.05,
@@ -344,7 +344,7 @@ FIXED_BENCHMARKS = {
     'Crosses per 90': (0.3, 5.0),
     'Accurate crosses, %': (10.0, 60.0),
     'xA per 90': (0.01, 0.25),
-    'xA Surplus per 90': (0.0, 0.20),
+    'xA Surplus': (-0.15, 0.20),      # Spans negative (deficits) to positive (surpluses)
     'Successful dribbles, %': (20.0, 90.0),
     'Accurate progressive passes, %': (30.0, 85.0),
     'Passes to final third per 90': (2.0, 15.0),
@@ -447,7 +447,7 @@ def load_and_process_database():
                     pd.to_numeric(df_raw['Aerial duels per 90'], errors='coerce').fillna(0)
                 )
 
-        # Dynamic creation of 'xA Surplus per 90' and full signed 'xA Delta per 90 (xA - Ast)' for Context
+        # Dynamic creation of signed 'xA Surplus' (xA per 90 minus Assists per 90)
         if sheet_name in ["Attacking Midfielders", "Wingers"]:
             if 'xA per 90' in df_raw.columns:
                 xa_90 = pd.to_numeric(df_raw['xA per 90'], errors='coerce').fillna(0)
@@ -459,11 +459,8 @@ def load_and_process_database():
                 else:
                     ast_90 = pd.Series(0.0, index=df_raw.index)
                 
-                # Unrewarded chance creation bonus (capped at >= 0 for ranking weight)
-                df_raw['xA Surplus per 90'] = (xa_90 - ast_90).clip(lower=0).round(3)
-                
-                # Full signed context delta (positive = poor finishers, negative = clinical finishers / over-performing team)
-                df_raw['xA Delta per 90 (xA - Ast)'] = (xa_90 - ast_90).round(3)
+                # Signed difference: positive = surplus (poor finishing), negative = deficit (clinical finishers)
+                df_raw['xA Surplus'] = (xa_90 - ast_90).round(3)
 
         profile = POSITION_PROFILES.get(sheet_name)
         if profile:
@@ -477,7 +474,7 @@ def load_and_process_database():
             df_ranked['Composite Score'] = 50.0
             df_ranked['Rank'] = range(1, len(df_ranked) + 1)
             
-        front_cols = [c for c in ['Rank', 'Player', 'Team', 'Composite Score', 'xA Delta per 90 (xA - Ast)', 'Minutes played', 'Age'] if c in df_ranked.columns]
+        front_cols = [c for c in ['Rank', 'Player', 'Team', 'Composite Score', 'xA Surplus', 'Minutes played', 'Age'] if c in df_ranked.columns]
         other_cols = [c for c in df_ranked.columns if c not in front_cols]
         sheets_dict[sheet_name] = df_ranked[front_cols + other_cols]
         
