@@ -447,7 +447,7 @@ def load_and_process_database():
                     pd.to_numeric(df_raw['Aerial duels per 90'], errors='coerce').fillna(0)
                 )
 
-        # Dynamic creation of 'xA Surplus per 90' for Playmaking profiles (Attacking Midfielders & Wingers)
+        # Dynamic creation of 'xA Surplus per 90' and full signed 'xA Delta per 90 (xA - Ast)' for Context
         if sheet_name in ["Attacking Midfielders", "Wingers"]:
             if 'xA per 90' in df_raw.columns:
                 xa_90 = pd.to_numeric(df_raw['xA per 90'], errors='coerce').fillna(0)
@@ -459,8 +459,11 @@ def load_and_process_database():
                 else:
                     ast_90 = pd.Series(0.0, index=df_raw.index)
                 
-                # Positive delta: xA per 90 exceeding actual Assists per 90 (unrewarded chance creation)
-                df_raw['xA Surplus per 90'] = (xa_90 - ast_90).clip(lower=0)
+                # Unrewarded chance creation bonus (capped at >= 0 for ranking weight)
+                df_raw['xA Surplus per 90'] = (xa_90 - ast_90).clip(lower=0).round(3)
+                
+                # Full signed context delta (positive = poor finishers, negative = clinical finishers / over-performing team)
+                df_raw['xA Delta per 90 (xA - Ast)'] = (xa_90 - ast_90).round(3)
 
         profile = POSITION_PROFILES.get(sheet_name)
         if profile:
@@ -474,7 +477,7 @@ def load_and_process_database():
             df_ranked['Composite Score'] = 50.0
             df_ranked['Rank'] = range(1, len(df_ranked) + 1)
             
-        front_cols = [c for c in ['Rank', 'Player', 'Team', 'Composite Score', 'Minutes played', 'Age'] if c in df_ranked.columns]
+        front_cols = [c for c in ['Rank', 'Player', 'Team', 'Composite Score', 'xA Delta per 90 (xA - Ast)', 'Minutes played', 'Age'] if c in df_ranked.columns]
         other_cols = [c for c in df_ranked.columns if c not in front_cols]
         sheets_dict[sheet_name] = df_ranked[front_cols + other_cols]
         
