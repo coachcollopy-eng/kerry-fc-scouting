@@ -266,12 +266,12 @@ POSITION_PROFILES = {
     "Attacking Midfielders": {
         "weights": {
             'xA per 90': 0.10,
-            'xA Surplus': 0.05,              # Rewards unrewarded chance creation & reflects team finishing context
-            'Key passes per 90': 0.075,
+            'xA Surplus': 0.025,              # Rewards unrewarded chance creation & reflects team finishing context
+            'Key passes per 90': 0.010,
             'Progressive passes per 90': 0.125,
-            'Accurate progressive passes, %': 0.05,
+            'Accurate progressive passes, %': 0.10,
             'Passes to final third per 90': 0.10,
-            'xG per 90': 0.10,
+            'xG per 90': 0.05,
             'Successful dribbles, %': 0.10,
             'Progressive runs per 90': 0.10,
             'Shots on target, %': 0.10,
@@ -284,10 +284,10 @@ POSITION_PROFILES = {
             'Successful dribbles, %': 0.15,
             'xG per 90': 0.075,
             'xA per 90': 0.075,
-            'xA Surplus': 0.05,              # Rewards unrewarded chance creation & reflects team finishing context
+            'xA Surplus': 0.025,              # Rewards unrewarded chance creation & reflects team finishing context
             'Accurate passes to final third, %': 0.075,
             'Crosses per 90': 0.075,
-            'Dribbles per 90': 0.05,
+            'Dribbles per 90': 0.075,
             'Shots on target, %': 0.075,
             'Shots per 90': 0.05,
             'Progressive runs per 90': 0.075,
