@@ -286,7 +286,7 @@ POSITION_PROFILES = {
             'Accurate passes to final third, %': 0.075,
             'Crosses per 90': 0.075,
             'Dribbles per 90': 0.075,
-            'Shots on target, %': 0.75,
+            'Shots on target, %': 0.075,
             'Shots per 90': 0.05,
             'Progressive runs per 90': 0.10,
             'Touches in box per 90': 0.05,
