@@ -249,17 +249,17 @@ POSITION_PROFILES = {
     },
     "Central Midfielders": {
         "weights": {
-            'Accurate passes, %': 0.15,
+            'Accurate passes, %': 0.125,
             'Accurate forward passes, %': 0.125,
             'Forward passes per 90': 0.10,
             'Passes to final third per 90': 0.10,
             'Progressive passes per 90': 0.10,
             'Offensive duels won, %': 0.05,
-            'Successful dribbles, %': 0.075,
+            'Successful dribbles, %': 0.05,
             'Progressive runs per 90': 0.05,
             'Defensive duels won, %': 0.10,
             'PAdj Interceptions': 0.10,
-            'xA per 90': 0.05
+            'Aerial duels won, %': 0.10
         },
         "inverse_metrics": []
     },
