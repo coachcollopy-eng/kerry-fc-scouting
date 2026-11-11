@@ -265,8 +265,9 @@ POSITION_PROFILES = {
     },
     "Attacking Midfielders": {
         "weights": {
-            'xA per 90': 0.125,
-            'Key passes per 90': 0.10,
+            'xA per 90': 0.10,
+            'xA Surplus per 90': 0.05,       # Rewards unrewarded chance creation (xA per 90 > Assists per 90)
+            'Key passes per 90': 0.075,
             'Progressive passes per 90': 0.125,
             'Accurate progressive passes, %': 0.05,
             'Passes to final third per 90': 0.10,
@@ -283,12 +284,13 @@ POSITION_PROFILES = {
             'Successful dribbles, %': 0.15,
             'xG per 90': 0.075,
             'xA per 90': 0.075,
+            'xA Surplus per 90': 0.05,       # Rewards unrewarded chance creation (xA per 90 > Assists per 90)
             'Accurate passes to final third, %': 0.075,
             'Crosses per 90': 0.075,
-            'Dribbles per 90': 0.075,
+            'Dribbles per 90': 0.05,
             'Shots on target, %': 0.075,
             'Shots per 90': 0.05,
-            'Progressive runs per 90': 0.10,
+            'Progressive runs per 90': 0.075,
             'Touches in box per 90': 0.05,
             'Accurate crosses, %': 0.10,
             'Accurate progressive passes, %': 0.05,
@@ -342,6 +344,7 @@ FIXED_BENCHMARKS = {
     'Crosses per 90': (0.3, 5.0),
     'Accurate crosses, %': (10.0, 60.0),
     'xA per 90': (0.01, 0.25),
+    'xA Surplus per 90': (0.0, 0.20),
     'Successful dribbles, %': (20.0, 90.0),
     'Accurate progressive passes, %': (30.0, 85.0),
     'Passes to final third per 90': (2.0, 15.0),
@@ -443,6 +446,21 @@ def load_and_process_database():
                     pd.to_numeric(df_raw['Defensive duels per 90'], errors='coerce').fillna(0) + 
                     pd.to_numeric(df_raw['Aerial duels per 90'], errors='coerce').fillna(0)
                 )
+
+        # Dynamic creation of 'xA Surplus per 90' for Playmaking profiles (Attacking Midfielders & Wingers)
+        if sheet_name in ["Attacking Midfielders", "Wingers"]:
+            if 'xA per 90' in df_raw.columns:
+                xa_90 = pd.to_numeric(df_raw['xA per 90'], errors='coerce').fillna(0)
+                if 'Assists per 90' in df_raw.columns:
+                    ast_90 = pd.to_numeric(df_raw['Assists per 90'], errors='coerce').fillna(0)
+                elif 'Assists' in df_raw.columns and 'Minutes played' in df_raw.columns:
+                    mins = pd.to_numeric(df_raw['Minutes played'], errors='coerce').replace(0, np.nan)
+                    ast_90 = (pd.to_numeric(df_raw['Assists'], errors='coerce').fillna(0) / mins * 90).fillna(0)
+                else:
+                    ast_90 = pd.Series(0.0, index=df_raw.index)
+                
+                # Positive delta: xA per 90 exceeding actual Assists per 90 (unrewarded chance creation)
+                df_raw['xA Surplus per 90'] = (xa_90 - ast_90).clip(lower=0)
 
         profile = POSITION_PROFILES.get(sheet_name)
         if profile:
