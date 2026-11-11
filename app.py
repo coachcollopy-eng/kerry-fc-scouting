@@ -202,12 +202,12 @@ POSITION_PROFILES = {
         "weights": {
             'Defensive duels won, %': 0.20,
             'Aerial duels won, %': 0.20,
-            'Total duels per 90': 0.10,
+            'Total duels per 90': 0.075,
             'PAdj Interceptions': 0.10,
             'Fouls per 90': 0.05,
             'Successful defensive actions per 90': 0.10,
             'Accurate passes, %': 0.10,
-            'Accurate forward passes, %': 0.05,
+            'Accurate forward passes, %': 0.075,
             'Forward passes per 90': 0.05,
             'Accurate long passes, %': 0.05
         },
@@ -221,11 +221,11 @@ POSITION_PROFILES = {
             'Fouls per 90': 0.05,
             'Crosses per 90': 0.05,
             'Accurate crosses, %': 0.10,
-            'xA per 90': 0.10,
+            'xA per 90': 0.05,
             'Successful dribbles, %': 0.05,
             'Accurate passes, %': 0.10,
-            'Accurate forward passes, %': 0.05,
-            'Forward passes per 90': 0.05,
+            'Accurate forward passes, %': 0.075,
+            'Forward passes per 90': 0.075,
             'Accurate progressive passes, %': 0.05
         },
         "inverse_metrics": ['Fouls per 90']
@@ -238,11 +238,11 @@ POSITION_PROFILES = {
             'Fouls per 90': 0.05,
             'Crosses per 90': 0.05,
             'Accurate crosses, %': 0.10,
-            'xA per 90': 0.10,
+            'xA per 90': 0.05,
             'Successful dribbles, %': 0.05,
             'Accurate passes, %': 0.10,
-            'Accurate forward passes, %': 0.05,
-            'Forward passes per 90': 0.05,
+            'Accurate forward passes, %': 0.075,
+            'Forward passes per 90': 0.075,
             'Accurate progressive passes, %': 0.05
         },
         "inverse_metrics": ['Fouls per 90']
@@ -265,43 +265,47 @@ POSITION_PROFILES = {
     },
     "Attacking Midfielders": {
         "weights": {
-            'xA per 90': 0.15,
-            'Key passes per 90': 0.15,
-            'Progressive passes per 90': 0.15,
-            'Accurate passes, %': 0.10,
+            'xA per 90': 0.125,
+            'Key passes per 90': 0.10,
+            'Progressive passes per 90': 0.125,
+            'Accurate passes, %': 0.05,
             'Passes to final third per 90': 0.10,
             'xG per 90': 0.10,
-            'Successful dribbles, %': 0.125,
-            'Progressive runs per 90': 0.125
+            'Successful dribbles, %': 0.10,
+            'Progressive runs per 90': 0.10,
+            'Shots on target, %': 0.10,
+            'Accurate crosses, %': 0.10,
         },
         "inverse_metrics": []
     },
     "Wingers": {
         "weights": {
-            'Successful dribbles, %': 0.125,
+            'Successful dribbles, %': 0.15,
             'xG per 90': 0.075,
             'xA per 90': 0.075,
             'Accurate passes to final third, %': 0.075,
             'Crosses per 90': 0.075,
             'Dribbles per 90': 0.075,
-            'Shots on target, %': 0.10,
+            'Shots on target, %': 0.75,
             'Shots per 90': 0.05,
             'Progressive runs per 90': 0.10,
-            'Touches in box per 90': 0.10,
+            'Touches in box per 90': 0.05,
             'Accurate crosses, %': 0.10,
             'Accurate progressive passes, %': 0.05
+            'Goals': 0.025
+            'Assists': 0.025
         },
         "inverse_metrics": []
     },
     "Center Forwards": {
         "weights": {
             'xG per 90': 0.15,
-            'Goals per 90': 0.15,
+            'Goals per 90': 0.125,
             'Goal conversion, %': 0.15,
             'Shots on target, %': 0.125,
             'Aerial duels won, %': 0.10,
             'Offensive duels won, %': 0.10,
-            'Shots per 90': 0.075,
+            'Shots per 90': 0.10,
             'Touches in box per 90': 0.05,
             'Progressive runs per 90': 0.05,
             'Received long passes per 90': 0.025,
@@ -313,7 +317,7 @@ POSITION_PROFILES = {
         "weights": {
             'Save rate, %': 0.25,
             'Prevented goals per 90': 0.25,
-            'Conceded goals per 90': 0.20,       # Inverse metric (lower is better)
+            'Conceded goals per 90': 0.20,
             'Accurate long passes, %': 0.15,
             'Aerial duels won, %': 0.15
         },
