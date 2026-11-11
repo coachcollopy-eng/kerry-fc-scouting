@@ -256,7 +256,7 @@ POSITION_PROFILES = {
             'Progressive passes per 90': 0.10,
             'Offensive duels won, %': 0.05,
             'Successful dribbles, %': 0.05,
-            'Progressive runs per 90': 0.05,
+            'Accurate progressive passes, %': 0.05,
             'Defensive duels won, %': 0.10,
             'PAdj Interceptions': 0.10,
             'Aerial duels won, %': 0.10
