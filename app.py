@@ -268,7 +268,7 @@ POSITION_PROFILES = {
             'xA per 90': 0.125,
             'Key passes per 90': 0.10,
             'Progressive passes per 90': 0.125,
-            'Accurate passes, %': 0.05,
+            'Accurate progressive passes, %': 0.05,
             'Passes to final third per 90': 0.10,
             'xG per 90': 0.10,
             'Successful dribbles, %': 0.10,
@@ -291,8 +291,8 @@ POSITION_PROFILES = {
             'Progressive runs per 90': 0.10,
             'Touches in box per 90': 0.05,
             'Accurate crosses, %': 0.10,
-            'Accurate progressive passes, %': 0.05
-            'Goals': 0.025
+            'Accurate progressive passes, %': 0.05,
+            'Goals': 0.025,
             'Assists': 0.025
         },
         "inverse_metrics": []
